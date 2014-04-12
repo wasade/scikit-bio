@@ -8,7 +8,10 @@
 # -----------------------------------------------------------------------------
 from __future__ import division
 
+<<<<<<< HEAD
 from numpy import array
+=======
+>>>>>>> 1097cefafc6f9bbb9d96f25b569892a3fe3f3600
 from skbio.parse.sequences import parse_fastq
 from skbio.core.exception import FastqParseError
 from unittest import TestCase, main
@@ -85,7 +88,9 @@ DATA = {
          qual=array([28, 28, 28, 26, 20, 25, 20, 19, 33, 12, 34, 34, 32, 32,
                      28, 31, 21, 26, 31, 34, 34, 35, 35, 32, 35, 35, 30, 27,
                      33, 35, 28, 33, 28, 20, 35]))
+
 }
+
 
 FASTQ_EXAMPLE = r"""@GAPC_0015:6:1:1259:10413#0/1
 AACACCAAACTTCTCCACCACGTGAGCTACAAAAG
