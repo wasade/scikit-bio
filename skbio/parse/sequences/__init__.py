@@ -16,6 +16,7 @@ Functions
     parse_clustal
     parse_fasta
     parse_fastq
+    parse_qual
 
 
 """
