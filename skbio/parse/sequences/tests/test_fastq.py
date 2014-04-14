@@ -8,10 +8,7 @@
 # -----------------------------------------------------------------------------
 from __future__ import division
 
-<<<<<<< HEAD
 from numpy import array
-=======
->>>>>>> 1097cefafc6f9bbb9d96f25b569892a3fe3f3600
 from skbio.parse.sequences import parse_fastq
 from skbio.core.exception import FastqParseError
 from unittest import TestCase, main
