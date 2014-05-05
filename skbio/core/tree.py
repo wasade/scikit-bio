@@ -183,6 +183,18 @@ def distance_from_r(m1, m2):
     return (1-correlation_t(m1.flat, m2.flat)[0])/2
 
 
+class _NodeCache(dict):
+    """Used internally for node caches"""
+    # This object is used to that additional information about the cache can
+    # be stored on the cache object. The issue is that:
+    #
+    # > d = {'foo': 'bar'}
+    # > d.cache_type = 'stuff'
+    #
+    # ...does not work, and neither does using setattr.
+    pass
+
+
 class TreeNode(object):
     r"""Representation of a node within a tree
 
@@ -223,7 +235,7 @@ class TreeNode(object):
         self.name = name
         self.length = length
         self.parent = parent
-        self._node_cache = {}
+        self._node_cache = _NodeCache()
         self.children = []
         self.id = None
 
@@ -1331,13 +1343,18 @@ class TreeNode(object):
         if not self.is_root():
             self.root().invalidate_node_cache()
         else:
-            self._node_cache = {}
+            self._node_cache = _NodeCache()
 
-    def create_node_cache(self):
+    def create_node_cache(self, tips_only=False):
         r"""Construct an internal lookup keyed by node name, valued by node
 
         This method will not cache nodes in which the .name is None. This
         method will raise DuplicateNodeError if a name conflict is discovered.
+
+        Parameters
+        ----------
+        tips_only : bool
+           Construct the cache out of only the tips if `True`
 
         Raises
         ------
@@ -1354,10 +1371,17 @@ class TreeNode(object):
         if not self.is_root():
             self.root().create_node_cache()
         else:
-            if self._node_cache:
+            if self._node_cache and self._node_cache.tips_only == tips_only:
                 return
+            else:
+                self.invalidate_node_cache()
 
-            for node in self.traverse():
+            if tips_only:
+                iter_ = self.tips()
+            else:
+                iter_ = self.traverse()
+
+            for node in iter_:
                 name = node.name
                 if name is None:
                     continue
@@ -1366,7 +1390,9 @@ class TreeNode(object):
                     raise DuplicateNodeError("%s already exists!" % name)
                 self._node_cache[name] = node
 
-    def find(self, name):
+            self._node_cache.tips_only = tips_only
+
+    def find(self, name, tips_only=False):
         r"""Find a node by name
 
         The first call to find will cache all nodes in the tree on the
@@ -1377,6 +1403,8 @@ class TreeNode(object):
         name : TreeNode or str
             The name or node to find. If `name` is `TreeNode` then it is
             simply returned
+        tips_only : bool
+            Search only in the tips of the tree if `True`
 
         Raises
         ------
@@ -1406,7 +1434,7 @@ class TreeNode(object):
         if isinstance(name, root.__class__):
             return name
 
-        root.create_node_cache()
+        root.create_node_cache(tips_only)
         node = root._node_cache.get(name, None)
 
         if node is None:
