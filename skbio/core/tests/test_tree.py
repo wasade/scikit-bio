@@ -255,6 +255,16 @@ class TreeTests(TestCase):
         with self.assertRaises(MissingNodeError):
             _ = t.find('does not exist')
 
+    def test_find_tips(self):
+        """Find a node in the tips of a tree"""
+        t = TreeNode.from_newick("((a,b)c,(d,e)f);")
+        exp = t.children[0].children[0]
+        obs = t.find('a', tips_only=True)
+        self.assertEqual(obs, exp)
+
+        with self.assertRaises(MissingNodeError):
+            _ = t.find('c', tips_only=True)
+
     def test_find_cache_bug(self):
         """First implementation did not force the cache to be at the root"""
         t = TreeNode.from_newick("((a,b)c,(d,e)f);")
