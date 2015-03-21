@@ -12,6 +12,8 @@ from warnings import warn
 
 import numpy as np
 import scipy as sp
+import scipy.linalg
+import scipy.sparse.linalg
 
 from skbio.stats.distance import DistanceMatrix
 from ._base import Ordination, OrdinationResults
@@ -46,7 +48,7 @@ def _eigh(F_matrix, **ignored):
     ----------
     .. [1] http://docs.scipy.org/doc/numpy/reference/generated/numpy.linalg.eigh.html
     """
-    return np.linalg.eigh(F_matrix)
+    return sp.linalg.eigh(F_matrix)
 
 
 def _eigsh(F_matrix, k=10, **kwargs):
@@ -75,41 +77,6 @@ def _eigsh(F_matrix, k=10, **kwargs):
     val, vec = sp.sparse.linalg.eigsh(F_matrix, k=k, **kwargs)
     return val, vec.T
 
-
-def _ssvd(F_matrix, k=10, p=10, qiter=0, **kwargs):
-    """Runs the SSVD method
-
-    This method is based on the algorithm described in "Finding Structure with
-    Randomness: Probabilistic Algorithms for Constructing Approximate Matrix
-    Decompositions [1]. The method implemented is derived from the R
-    implementation found in [2].
-
-    Parameters
-    ----------
-    F_matrix : np.ndarray
-        The result of PCoABase._F_matrix
-    k : unsigned int
-        The number of eigenvectors and values to find. A lower k will result in
-        lower quality resulting eignvectors and values.
-    p : unsigned int
-        Oversampling parameter, this is added to k to boost accuracy.
-    qiter : unsigned int
-        The number of iterations to perform.
-
-    Returns
-    -------
-    array
-        The resulting k eigenvalues.
-    array
-        The resulting k eigenvectors.
-
-    References
-    ----------
-    .. [1] http://epubs.siam.org/doi/abs/10.1137/090771806
-    .. [2] https://cwiki.apache.org/confluence/display/MAHOUT/Stochastic+Singular+Value+Decomposition
-
-    """
-    raise NotImplementedError
 
 
 class PCoABase(Ordination):
