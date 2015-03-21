@@ -67,16 +67,12 @@ def ssvd(A, k=10, p=10, qiter=0, compute_v=True,  **kwargs):
         Q, R = sp.linalg.qr(y)
         b = np.dot(Q.T, A)
 
+    bbt = np.dot(b, b.T)
+    eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
     if compute_v: # compute svd of much smaller matrix b
-        #U_ssvd, eigvals, V_ssvd = scipy.sparse.linalg.svds(b, k)
-        bbt = np.dot(b, b.T)
-        eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
         V_ssvd = np.dot(b.T, np.dot(U_ssvd, np.diag(1 / np.sqrt(eigvals))))
         U_ssvd = np.dot(Q, U_ssvd)
-        return np.sqrt(eigvals), U_ssvd, V_ssvd
-
-    else: # compute eigenvalues of much smaller matrix bbt
-        bbt = np.dot(b, b.T)
-        eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
+        return np.sqrt(eigvals), U_ssvd, V_ssvd.T
+    else:
         U_ssvd = np.dot(Q, U_ssvd)
         return np.sqrt(eigvals), U_ssvd
