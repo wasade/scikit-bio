@@ -70,10 +70,10 @@ def ssvd(A, k=10, p=10, qiter=0, compute_v=True,  **kwargs):
     if compute_v:
         U_ssvd, eigvals, V_ssvd = scipy.sparse.linalg.svds(b, k)
         V_ssvd = V_ssvd.real
-        return eigvals, U_ssvd, V_ssvd
+        return U_ssvd, eigvals, V_ssvd
     else:
         bbt = np.dot(b, b.T)           # compute eigenvalues of much smaller matrix bbt
         eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
         U_ssvd = np.dot(Q, U_ssvd)
         U_ssvd = U_ssvd.real
-        return eigvals, U_ssvd
+        return U_ssvd, np.sqrt(eigvals)
