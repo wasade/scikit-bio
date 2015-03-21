@@ -7,21 +7,20 @@
 # ----------------------------------------------------------------------------
 
 from __future__ import absolute_import, division, print_function
-from future.utils.six import StringIO, string_types
+from six import string_types
 
-import csv
-import warnings
 from copy import deepcopy
-from importlib import import_module
 
+import matplotlib.pyplot as plt
+from IPython.core.pylabtools import print_figure
+from IPython.core.display import Image, SVG
 import numpy as np
 import pandas as pd
 from scipy.spatial.distance import squareform
 
-from skbio.stats import p_value_to_str
-
-# This will be the responsibility of the ABC in the future.
-import_module('skbio.io')
+from skbio._base import SkbioObject
+from skbio.stats._misc import _pprint_strs
+from skbio.util import find_duplicates
 
 
 class DissimilarityMatrixError(Exception):
@@ -43,7 +42,7 @@ class MissingIDError(DissimilarityMatrixError):
                      missing_id,)
 
 
-class DissimilarityMatrix(object):
+class DissimilarityMatrix(SkbioObject):
     """Store dissimilarities between objects.
 
     A `DissimilarityMatrix` instance stores a square, hollow, two-dimensional
@@ -78,6 +77,8 @@ class DissimilarityMatrix(object):
     shape
     size
     T
+    png
+    svg
 
     See Also
     --------
@@ -95,80 +96,9 @@ class DissimilarityMatrix(object):
     .. [1] http://docs.scipy.org/doc/scipy/reference/spatial.distance.html
 
     """
-    default_write_format = 'dm'
+    default_write_format = 'lsmat'
     # Used in __str__
     _matrix_element_name = 'dissimilarity'
-
-    @classmethod
-    def from_file(cls, dm_f, delimiter='\t'):
-        """Load dissimilarity matrix from delimited text file.
-
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``from_file`` will be removed in scikit-bio 0.3.0. It is replaced by
-           ``read``, which is a more general method for deserializing
-           dissimilarity/distance matrices. ``read`` supports multiple file
-           formats, automatic file format detection, etc. by taking advantage
-           of scikit-bio's I/O registry system. See :mod:`skbio.io` for more
-           details.
-
-        Creates a ``DissimilarityMatrix`` (or subclass) instance from a ``dm``
-        formatted file. See :mod:`skbio.io.dm` for the format specification.
-
-        Parameters
-        ----------
-        dm_f: filepath or filehandle
-            File to read from.
-        delimiter : str, optional
-            String delimiting elements in `dm_f`.
-
-        Returns
-        -------
-        DissimilarityMatrix
-            Instance of type `cls` containing the parsed contents of `dm_f`.
-
-        See Also
-        --------
-        read
-
-        """
-        warnings.warn(
-            "DissimilarityMatrix.from_file and DistanceMatrix.from_file are "
-            "deprecated and will be removed in scikit-bio 0.3.0. Please "
-            "update your code to use DissimilarityMatrix.read and "
-            "DistanceMatrix.read.", UserWarning)
-        return cls.read(dm_f, format='dm', delimiter=delimiter)
-
-    def to_file(self, out_f, delimiter='\t'):
-        """Save dissimilarity matrix to file as delimited text.
-
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``to_file`` will be removed in scikit-bio 0.3.0. It is replaced by
-           ``write``, which is a more general method for serializing
-           dissimilarity/distance matrices. ``write`` supports multiple file
-           formats by taking advantage of scikit-bio's I/O registry system.
-           See :mod:`skbio.io` for more details.
-
-        Serializes dissimilarity matrix as a ``dm`` formatted file. See
-        :mod:`skbio.io.dm` for the format specification.
-
-        Parameters
-        ----------
-        out_f : filepath or filehandle
-            File to write to.
-        delimiter : str, optional
-            Delimiter used to separate elements in output format.
-
-        See Also
-        --------
-        write
-
-        """
-        warnings.warn(
-            "DissimilarityMatrix.to_file and DistanceMatrix.to_file are "
-            "deprecated and will be removed in scikit-bio 0.3.0. Please "
-            "update your code to use DissimilarityMatrix.write and "
-            "DistanceMatrix.write.", UserWarning)
-        self.write(out_f, format='dm', delimiter=delimiter)
 
     def __init__(self, data, ids=None):
         if isinstance(data, DissimilarityMatrix):
@@ -380,6 +310,93 @@ class DissimilarityMatrix(object):
         filtered_data = self._data[idxs][:, idxs]
         return self.__class__(filtered_data, ids)
 
+    def plot(self, cmap=None, title=""):
+        """Creates a heatmap of the dissimilarity matrix
+
+        Parameters
+        ----------
+        cmap: str or matplotlib.colors.Colormap, optional
+            Sets the color scheme of the heatmap
+            If ``None``, defaults to the colormap specified in the matplotlib
+            rc file.
+
+        title: str, optional
+            Sets the title label of the heatmap
+            (Default is blank)
+
+        Returns
+        -------
+        matplotlib.figure.Figure
+            Figure containing the heatmap and colorbar of the plotted
+            dissimilarity matrix.
+
+        Examples
+        --------
+        .. plot::
+
+           Define a dissimilarity matrix with five objects labeled A-E:
+
+           >>> from skbio.stats.distance import DissimilarityMatrix
+           >>> dm = DissimilarityMatrix([[0, 1, 2, 3, 4], [1, 0, 1, 2, 3],
+           ...                           [2, 1, 0, 1, 2], [3, 2, 1, 0, 1],
+           ...                           [4, 3, 2, 1, 0]],
+           ...                          ['A', 'B', 'C', 'D', 'E'])
+
+           Plot the dissimilarity matrix as a heatmap:
+
+           >>> fig = dm.plot(cmap='Reds', title='Example heatmap')
+
+        """
+        # based on http://stackoverflow.com/q/14391959/3776794
+        fig, ax = plt.subplots()
+
+        # use pcolormesh instead of pcolor for performance
+        heatmap = ax.pcolormesh(self.data, cmap=cmap)
+        fig.colorbar(heatmap)
+
+        # center labels within each cell
+        ticks = np.arange(0.5, self.shape[0])
+        ax.set_xticks(ticks, minor=False)
+        ax.set_yticks(ticks, minor=False)
+
+        # display data as it is stored in the dissimilarity matrix
+        # (default is to have y-axis inverted)
+        ax.invert_yaxis()
+
+        ax.set_xticklabels(self.ids, rotation=90, minor=False)
+        ax.set_yticklabels(self.ids, minor=False)
+        ax.set_title(title)
+
+        return fig
+
+    def _repr_png_(self):
+        return self._figure_data('png')
+
+    def _repr_svg_(self):
+        return self._figure_data('svg')
+
+    @property
+    def png(self):
+        """Display heatmap in IPython Notebook as PNG.
+
+        """
+        return Image(self._repr_png_(), embed=True)
+
+    @property
+    def svg(self):
+        """Display heatmap in IPython Notebook as SVG.
+
+        """
+        return SVG(self._repr_svg_())
+
+    def _figure_data(self, format):
+        fig = self.plot()
+        data = print_figure(fig, format)
+        # We MUST close the figure, otherwise IPython's display machinery
+        # will pick it up and send it as output, resulting in a double display
+        plt.close(fig)
+        return data
+
     def __str__(self):
         """Return a string representation of the dissimilarity matrix.
 
@@ -396,7 +413,7 @@ class DissimilarityMatrix(object):
         """
         return '%dx%d %s matrix\nIDs:\n%s\nData:\n' % (
             self.shape[0], self.shape[1], self._matrix_element_name,
-            self._pprint_ids()) + str(self.data)
+            _pprint_strs(self.ids)) + str(self.data)
 
     def __eq__(self, other):
         """Compare this dissimilarity matrix to another for equality.
@@ -559,30 +576,33 @@ class DissimilarityMatrix(object):
         exception is caught and handled.
 
         """
-        num_ids = len(ids)
-
         if 0 in data.shape:
             raise DissimilarityMatrixError("Data must be at least 1x1 in "
                                            "size.")
-        elif len(data.shape) != 2:
+        if len(data.shape) != 2:
             raise DissimilarityMatrixError("Data must have exactly two "
                                            "dimensions.")
-        elif data.shape[0] != data.shape[1]:
+        if data.shape[0] != data.shape[1]:
             raise DissimilarityMatrixError("Data must be square (i.e., have "
                                            "the same number of rows and "
                                            "columns).")
-        elif data.dtype != np.double:
+        if data.dtype != np.double:
             raise DissimilarityMatrixError("Data must contain only floating "
                                            "point values.")
-        elif np.trace(data) != 0:
+        if np.trace(data) != 0:
             raise DissimilarityMatrixError("Data must be hollow (i.e., the "
                                            "diagonal can only contain zeros).")
-        elif num_ids != len(set(ids)):
-            raise DissimilarityMatrixError("IDs must be unique.")
-        elif num_ids != data.shape[0]:
-            raise DissimilarityMatrixError("The number of IDs must match the "
-                                           "number of rows/columns in the "
-                                           "data.")
+        duplicates = find_duplicates(ids)
+        if duplicates:
+            formatted_duplicates = ', '.join(repr(e) for e in duplicates)
+            raise DissimilarityMatrixError("IDs must be unique. Found the "
+                                           "following duplicate IDs: %s" %
+                                           formatted_duplicates)
+        if len(ids) != data.shape[0]:
+            raise DissimilarityMatrixError("The number of IDs (%d) must match "
+                                           "the number of rows/columns in the "
+                                           "data (%d)." %
+                                           (len(ids), data.shape[0]))
 
     def _index_list(self, list_):
         return {id_: idx for idx, id_ in enumerate(list_)}
@@ -591,16 +611,6 @@ class DissimilarityMatrix(object):
         return (isinstance(index, tuple) and
                 len(index) == 2 and
                 all(map(lambda e: isinstance(e, string_types), index)))
-
-    def _pprint_ids(self, max_chars=80, delimiter=', ', suffix='...',):
-        # Adapted from http://stackoverflow.com/a/250373
-        ids_str = delimiter.join(self.ids)
-
-        if len(ids_str) > max_chars:
-            truncated = ids_str[:max_chars + 1].split(delimiter)[0:-1]
-            ids_str = delimiter.join(truncated) + delimiter + suffix
-
-        return ids_str
 
 
 class DistanceMatrix(DissimilarityMatrix):
@@ -767,241 +777,127 @@ def randdm(num_objects, ids=None, constructor=None, random_fn=None):
     return constructor(data, ids)
 
 
-class CategoricalStats(object):
-    """Base class for categorical statistical methods.
+# helper functions for anosim and permanova
 
-    Categorical statistical methods generally test for significant differences
-    between discrete groups of objects, as determined by a categorical variable
-    (grouping vector).
+def _preprocess_input(distance_matrix, grouping, column):
+    """Compute intermediate results not affected by permutations.
 
-    See Also
-    --------
-    ANOSIM
-    PERMANOVA
+    These intermediate results can be computed a single time for efficiency,
+    regardless of grouping vector permutations (i.e., when calculating the
+    p-value). These intermediate results are used by both ANOSIM and PERMANOVA.
+
+    Also validates and normalizes input (e.g., converting ``DataFrame`` column
+    into grouping vector).
 
     """
+    if not isinstance(distance_matrix, DistanceMatrix):
+        raise TypeError("Input must be a DistanceMatrix.")
 
-    short_method_name = ''
-    long_method_name = ''
-    test_statistic_name = ''
+    if isinstance(grouping, pd.DataFrame):
+        if column is None:
+            raise ValueError(
+                "Must provide a column name if supplying a DataFrame.")
+        else:
+            grouping = _df_to_vector(distance_matrix, grouping, column)
+    elif column is not None:
+        raise ValueError(
+            "Must provide a DataFrame if supplying a column name.")
 
-    def __init__(self, distance_matrix, grouping, column=None):
-        if not isinstance(distance_matrix, DistanceMatrix):
-            raise TypeError("Input must be a DistanceMatrix.")
+    sample_size = distance_matrix.shape[0]
+    if len(grouping) != sample_size:
+        raise ValueError(
+            "Grouping vector size must match the number of IDs in the "
+            "distance matrix.")
 
-        if isinstance(grouping, pd.DataFrame):
-            if column is None:
-                raise ValueError("Must provide a column name if supplying a "
-                                 "data frame.")
-            else:
-                grouping = self._df_to_vector(distance_matrix, grouping,
-                                              column)
-        elif column is not None:
-            raise ValueError("Must provide a data frame if supplying a column "
-                             "name.")
+    # Find the group labels and convert grouping to an integer vector
+    # (factor).
+    groups, grouping = np.unique(grouping, return_inverse=True)
+    num_groups = len(groups)
 
-        if len(grouping) != distance_matrix.shape[0]:
-            raise ValueError("Grouping vector size must match the number of "
-                             "IDs in the distance matrix.")
+    if num_groups == len(grouping):
+        raise ValueError(
+            "All values in the grouping vector are unique. This method cannot "
+            "operate on a grouping vector with only unique values (e.g., "
+            "there are no 'within' distances because each group of objects "
+            "contains only a single object).")
+    if num_groups == 1:
+        raise ValueError(
+            "All values in the grouping vector are the same. This method "
+            "cannot operate on a grouping vector with only a single group of "
+            "objects (e.g., there are no 'between' distances because there is "
+            "only a single group).")
 
-        # Find the group labels and convert grouping to an integer vector
-        # (factor).
-        groups, grouping = np.unique(grouping, return_inverse=True)
+    tri_idxs = np.triu_indices(sample_size, k=1)
+    distances = distance_matrix.condensed_form()
 
-        if len(groups) == len(grouping):
-            raise ValueError("All values in the grouping vector are unique. "
-                             "This method cannot operate on a grouping vector "
-                             "with only unique values (e.g., there are no "
-                             "'within' distances because each group of "
-                             "objects contains only a single object).")
-        if len(groups) == 1:
-            raise ValueError("All values in the grouping vector are the same. "
-                             "This method cannot operate on a grouping vector "
-                             "with only a single group of objects (e.g., "
-                             "there are no 'between' distances because there "
-                             "is only a single group).")
-
-        self._dm = distance_matrix
-        self._grouping = grouping
-        self._groups = groups
-        self._tri_idxs = np.triu_indices(self._dm.shape[0], k=1)
-
-    def _df_to_vector(self, distance_matrix, df, column):
-        """Return a grouping vector from a data frame column.
-
-        Parameters
-        ----------
-        distance_marix : DistanceMatrix
-            Distance matrix whose IDs will be mapped to group labels.
-        df : pandas.DataFrame
-            Data frame (indexed by distance matrix ID).
-        column : str
-            Column name in `df` containing group labels.
-
-        Returns
-        -------
-        list
-            Grouping vector (vector of labels) based on the IDs in
-            `distance_matrix`. Each ID's label is looked up in the data frame
-            under the column specified by `column`.
-
-        Raises
-        ------
-        ValueError
-            If `column` is not in the data frame, or a distance matrix ID is
-            not in the data frame.
-
-        """
-        if column not in df:
-            raise ValueError("Column '%s' not in data frame." % column)
-
-        grouping = df.loc[distance_matrix.ids, column]
-        if grouping.isnull().any():
-            raise ValueError("One or more IDs in the distance matrix are not "
-                             "in the data frame.")
-        return grouping.tolist()
-
-    def __call__(self, permutations=999):
-        """Execute the statistical method.
-
-        Parameters
-        ----------
-        permutations : int, optional
-            Number of permutations to use when calculating statistical
-            significance. Must be >= 0. If 0, the resulting p-value will be
-            ``None``.
-
-        Returns
-        -------
-        CategoricalStatsResults
-            Results of the method, including test statistic and p-value.
-
-        .. shownumpydoc
-
-        """
-        if permutations < 0:
-            raise ValueError("Number of permutations must be greater than or "
-                             "equal to zero.")
-
-        stat = self._run(self._grouping)
-
-        p_value = None
-        if permutations > 0:
-            perm_stats = np.empty(permutations, dtype=np.float64)
-
-            for i in range(permutations):
-                perm_grouping = np.random.permutation(self._grouping)
-                perm_stats[i] = self._run(perm_grouping)
-
-            p_value = ((perm_stats >= stat).sum() + 1) / (permutations + 1)
-
-        return CategoricalStatsResults(self.short_method_name,
-                                       self.long_method_name,
-                                       self.test_statistic_name,
-                                       self._dm.shape[0], self._groups, stat,
-                                       p_value, permutations)
-
-    def _run(self, grouping):
-        raise NotImplementedError("Subclasses must implement _run().")
+    return sample_size, num_groups, grouping, tri_idxs, distances
 
 
-class CategoricalStatsResults(object):
-    """Statistical method results container.
+def _df_to_vector(distance_matrix, df, column):
+    """Return a grouping vector from a ``DataFrame`` column.
 
-    Stores the results of running a `CategoricalStats` method a single time,
-    and provides a way to format the results.
-
-    Attributes
+    Parameters
     ----------
-    short_method_name
-    long_method_name
-    test_statistic_name
-    sample_size
-    groups
-    statistic
-    p_value
-    permutations
+    distance_marix : DistanceMatrix
+        Distance matrix whose IDs will be mapped to group labels.
+    df : pandas.DataFrame
+        ``DataFrame`` (indexed by distance matrix ID).
+    column : str
+        Column name in `df` containing group labels.
 
-    Notes
-    -----
-    Users will generally not directly instantiate objects of this class. The
-    various categorical statistical methods will return an object of this type
-    when they are run.
+    Returns
+    -------
+    list
+        Grouping vector (vector of labels) based on the IDs in
+        `distance_matrix`. Each ID's label is looked up in the ``DataFrame``
+        under the column specified by `column`.
+
+    Raises
+    ------
+    ValueError
+        If `column` is not in the ``DataFrame``, or a distance matrix ID is
+        not in the ``DataFrame``.
 
     """
+    if column not in df:
+        raise ValueError("Column '%s' not in DataFrame." % column)
 
-    def __init__(self, short_method_name, long_method_name,
-                 test_statistic_name, sample_size, groups, statistic, p_value,
-                 permutations):
-        self.short_method_name = short_method_name
-        self.long_method_name = long_method_name
-        self.test_statistic_name = test_statistic_name
-        self.sample_size = sample_size
-        self.groups = groups
-        self.statistic = statistic
-        self.p_value = p_value
-        self.permutations = permutations
+    grouping = df.loc[distance_matrix.ids, column]
+    if grouping.isnull().any():
+        raise ValueError(
+            "One or more IDs in the distance matrix are not in the data "
+            "frame.")
+    return grouping.tolist()
 
-    def __str__(self):
-        """Return pretty-print (fixed width) string."""
-        rows = (self._format_header(), self._format_data())
 
-        max_widths = []
-        for col_idx in range(len(rows[0])):
-            max_widths.append(max(map(lambda e: len(e[col_idx]), rows)))
+def _run_monte_carlo_stats(test_stat_function, grouping, permutations):
+    """Run stat test and compute significance with Monte Carlo permutations."""
+    if permutations < 0:
+        raise ValueError(
+            "Number of permutations must be greater than or equal to zero.")
 
-        results = []
-        for row in rows:
-            padded_row = []
-            for col_idx, val in enumerate(row):
-                padded_row.append(val.rjust(max_widths[col_idx]))
-            results.append('  '.join(padded_row))
+    stat = test_stat_function(grouping)
 
-        return '\n'.join(results) + '\n'
+    p_value = np.nan
+    if permutations > 0:
+        perm_stats = np.empty(permutations, dtype=np.float64)
 
-    def _repr_html_(self):
-        """Return a string containing an HTML table of results.
+        for i in range(permutations):
+            perm_grouping = np.random.permutation(grouping)
+            perm_stats[i] = test_stat_function(perm_grouping)
 
-        This method will be called within the IPython Notebook instead of
-        __repr__ to display results.
+        p_value = ((perm_stats >= stat).sum() + 1) / (permutations + 1)
 
-        """
-        header = self._format_header()
-        data = self._format_data()
-        return pd.DataFrame([data[1:]], columns=header[1:],
-                            index=[data[0]])._repr_html_()
+    return stat, p_value
 
-    def summary(self, delimiter='\t'):
-        """Return a formatted summary of results as a string.
 
-        The string is formatted as delimited text.
-
-        Parameters
-        ----------
-        delimiter : str, optional
-            String to delimit fields by in formatted output. Default is tab
-            (TSV).
-
-        Returns
-        -------
-        str
-            Delimited-text summary of results.
-
-        """
-        summary = StringIO()
-        csv_writer = csv.writer(summary, delimiter=delimiter,
-                                lineterminator='\n')
-        csv_writer.writerow(self._format_header())
-        csv_writer.writerow(self._format_data())
-        return summary.getvalue()
-
-    def _format_header(self):
-        return ('Method name', 'Sample size', 'Number of groups',
-                self.test_statistic_name, 'p-value', 'Number of permutations')
-
-    def _format_data(self):
-        p_value_str = p_value_to_str(self.p_value, self.permutations)
-
-        return (self.short_method_name, '%d' % self.sample_size,
-                '%d' % len(self.groups), str(self.statistic), p_value_str,
-                '%d' % self.permutations)
+def _build_results(method_name, test_stat_name, sample_size, num_groups, stat,
+                   p_value, permutations):
+    """Return ``pandas.Series`` containing results of statistical test."""
+    return pd.Series(
+        data=[method_name, test_stat_name, sample_size, num_groups, stat,
+              p_value, permutations],
+        index=['method name', 'test statistic name', 'sample size',
+               'number of groups', 'test statistic', 'p-value',
+               'number of permutations'],
+        name='%s results' % method_name)

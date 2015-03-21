@@ -11,6 +11,9 @@ from __future__ import absolute_import, division, print_function
 from warnings import warn
 
 import numpy as np
+import scipy as sp
+import scipy.linalg
+import scipy.sparse.linalg
 
 from skbio.stats.distance import DistanceMatrix
 from ._base import Ordination, OrdinationResults
@@ -24,7 +27,59 @@ from ._base import Ordination, OrdinationResults
 #   so, so I'm not doing that.
 
 
-class PCoA(Ordination):
+def _eigh(F_matrix, **ignored):
+    """Wrapper around np.linalg.eigh
+
+    The eigh method is described in [1].
+
+    Parameters
+    ----------
+    F_matrix : np.ndarray
+        The result of PCoABase._F_matrix
+
+    Returns
+    -------
+    array
+        The resulting eigenvalues.
+    array
+        The resulting eigenvectors.
+
+    References
+    ----------
+    .. [1] http://docs.scipy.org/doc/numpy/reference/generated/numpy.linalg.eigh.html
+    """
+    return sp.linalg.eigh(F_matrix)
+
+
+def _eigsh(F_matrix, k=10, **kwargs):
+    """Wrapper around scipy.sparse.linalg.eigsh
+
+    The eigsh method is described in [1].
+
+    Parameters
+    ----------
+    F_matrix : np.ndarray
+        The result of PCoABase._F_matrix
+    k : unsigned int
+        The number of eigenvectors and values to find.
+
+    Returns
+    -------
+    array
+        The resulting k eigenvalues.
+    array
+        The resulting k eigenvectors.
+
+    References
+    ----------
+    .. [1] http://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.eigsh.html
+    """
+    val, vec = sp.sparse.linalg.eigsh(F_matrix, k=k, **kwargs)
+    return val, vec.T
+
+
+
+class PCoABase(Ordination):
     r"""Perform Principal Coordinate Analysis.
 
     Principal Coordinate Analysis (PCoA) is a method similar to PCA
@@ -63,15 +118,29 @@ class PCoA(Ordination):
        appear, allowing the user to decide if they can be safely
        ignored.
     """
-    short_method_name = 'PCoA'
-    long_method_name = 'Principal Coordinate Analysis'
+    # defined in subclass
+    short_method_name = None
+    long_method_name = None
+    eig_methods = {}
 
-    def __init__(self, distance_matrix):
+    def __init__(self, distance_matrix, eig_f=None, eig_args=None):
         if isinstance(distance_matrix, DistanceMatrix):
             self.dm = np.asarray(distance_matrix.data, dtype=np.float64)
             self.ids = distance_matrix.ids
         else:
             raise TypeError("Input must be a DistanceMatrix.")
+
+        self._eig_args = eig_args if eig_args is not None else {}
+        if eig_f is None:
+            self._eig_f = _eigh
+        else:
+            if eig_f not in self._eig_methods:
+                eig_methods = ', '.join(self._eig_methods)
+                raise KeyError("Unknown method: %s. The available methods "
+                               "are: %s" % (eig_f, eig_methods))
+            else:
+                self._eig_f = self._eig_methods[eig_f]
+
         self._pcoa()
 
     def _pcoa(self):
@@ -85,7 +154,7 @@ class PCoA(Ordination):
         # If the eigendecomposition ever became a bottleneck, it could
         # be replaced with an iterative version that computes the
         # largest k eigenvectors.
-        eigvals, eigvecs = np.linalg.eigh(F_matrix)
+        eigvals, eigvecs = self._eig_f(F_matrix, **self._eig_args)
 
         # eigvals might not be ordered, so we order them (at least one
         # is zero). cogent makes eigenvalues positive by taking the
@@ -109,6 +178,48 @@ class PCoA(Ordination):
         idxs_descending = eigvals.argsort()[::-1]
         self.eigvals = eigvals[idxs_descending]
         self.eigvecs = eigvecs[:, idxs_descending]
+
+    def scores(self):
+        """Compute coordinates in transformed space.
+
+        Returns
+        -------
+        OrdinationResults
+            Object that stores the computed eigenvalues, the
+            proportion explained by each of them (per unit) and
+            transformed coordinates, etc.
+
+        See Also
+        --------
+        OrdinationResults
+        """
+        raise NotImplementedError("Must be defined in a subclass")
+
+    @staticmethod
+    def _E_matrix(distance_matrix):
+        """Compute E matrix from a distance matrix.
+
+        Squares and divides by -2 the input elementwise. Eq. 9.20 in
+        Legendre & Legendre 1998."""
+        return distance_matrix * distance_matrix / -2
+
+    @staticmethod
+    def _F_matrix(E_matrix):
+        """Compute F matrix from E matrix.
+
+        Centring step: for each element, the mean of the corresponding
+        row and column are substracted, and the mean of the whole
+        matrix is added. Eq. 9.21 in Legendre & Legendre 1998."""
+        row_means = E_matrix.mean(axis=1, keepdims=True)
+        col_means = E_matrix.mean(axis=0, keepdims=True)
+        matrix_mean = E_matrix.mean()
+        return E_matrix - row_means - col_means + matrix_mean
+
+
+class PCoA(PCoABase):
+    short_method_name = 'PCoA'
+    long_method_name = 'Principal Coordinate Analysis'
+    eig_methods = {'eigh': _eigh, 'eigsh': _eigsh}
 
     def scores(self):
         """Compute coordinates in transformed space.
@@ -150,22 +261,11 @@ class PCoA(Ordination):
                                  proportion_explained=proportion_explained,
                                  site_ids=self.ids)
 
-    @staticmethod
-    def _E_matrix(distance_matrix):
-        """Compute E matrix from a distance matrix.
 
-        Squares and divides by -2 the input elementwise. Eq. 9.20 in
-        Legendre & Legendre 1998."""
-        return distance_matrix * distance_matrix / -2
+class APCoA(PCoABase):
+    short_method_name = 'APCoA'
+    long_method_name = 'Approximate Principal Coordinate Analysis'
+    eig_methods = {}
 
-    @staticmethod
-    def _F_matrix(E_matrix):
-        """Compute F matrix from E matrix.
-
-        Centring step: for each element, the mean of the corresponding
-        row and column are substracted, and the mean of the whole
-        matrix is added. Eq. 9.21 in Legendre & Legendre 1998."""
-        row_means = E_matrix.mean(axis=1, keepdims=True)
-        col_means = E_matrix.mean(axis=0, keepdims=True)
-        matrix_mean = E_matrix.mean()
-        return E_matrix - row_means - col_means + matrix_mean
+    def scores(self):
+        return OrdinationResults(eigvals=self.eigvals, site

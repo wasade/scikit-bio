@@ -85,13 +85,13 @@ Control
 {'avg': 3.007022633956606}
 """
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
 # Distributed under the terms of the Modified BSD License.
 #
 # The full license is in the file COPYING.txt, distributed with this software.
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 from __future__ import absolute_import, division, print_function
 
@@ -519,9 +519,11 @@ class GradientANOVA(object):
         # If sort_category is provided, we used the value of such category to
         # sort. Otherwise, we use the sample id.
         if sort_category:
-            sort_val = lambda sid: self._metadata_map[sort_category][sid]
+            def sort_val(sid):
+                return self._metadata_map[sort_category][sid]
         else:
-            sort_val = lambda sid: sid
+            def sort_val(sid):
+                return sid
 
         self._groups = defaultdict(dict)
         for cat in trajectory_categories:

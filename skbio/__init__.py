@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -9,8 +6,32 @@ from __future__ import absolute_import, division, print_function
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
+from __future__ import absolute_import, division, print_function
+
+from skbio.util import TestRunner
+
+# Add skbio.io to sys.modules to prevent cycles in our imports
+import skbio.io
+# imports included for convenience
+from skbio.sequence import (
+    BiologicalSequence, NucleotideSequence, DNA, DNASequence, RNA, RNASequence,
+    Protein, ProteinSequence)
+from skbio.stats.distance import DistanceMatrix
+from skbio.alignment import (
+    local_pairwise_align_ssw, SequenceCollection, Alignment)
+from skbio.tree import (
+    TreeNode, nj)
+from skbio.io import read, write
+
+skbio.io  # Stop flake8 error
+
+__all__ = ['BiologicalSequence', 'NucleotideSequence', 'DNA', 'DNASequence',
+           'RNA', 'RNASequence', 'Protein', 'ProteinSequence',
+           'DistanceMatrix', 'local_pairwise_align_ssw', 'SequenceCollection',
+           'Alignment', 'TreeNode', 'nj', 'read', 'write']
+
 __credits__ = "https://github.com/biocore/scikit-bio/graphs/contributors"
-__version__ = "0.2.0-dev"
+__version__ = "0.2.3-dev"
 
 mottos = [
     # 03/15/2014
@@ -19,6 +40,8 @@ mottos = [
     "no cog yay"
 ]
 motto = mottos[-1]
+
+# Created at patorjk.com
 
 title = r"""
 *                                                    *
@@ -31,6 +54,8 @@ title = r"""
 
 *                                                    *
 """
+
+# Created by @gregcaporaso
 
 art = r"""
 
@@ -57,33 +82,7 @@ if __doc__ is None:
 else:
     __doc__ = title + art + __doc__
 
-# Add skbio.io to sys.modules to prevent cycles in our imports
-import skbio.io
-skbio.io  # Stop flake8 error
-
-# imports included for convenience
-from skbio.sequence import (
-    BiologicalSequence, NucleotideSequence, DNA, DNASequence, RNA, RNASequence,
-    Protein, ProteinSequence)
-from skbio.stats.distance import DistanceMatrix
-from skbio.alignment import (
-    local_pairwise_align_ssw, SequenceCollection, Alignment)
-from skbio.tree import (
-    TreeNode, nj)
-from skbio.parse.sequences import (
-    parse_fasta, parse_fastq, parse_qual, parse_qseq, FastaIterator,
-    FastqIterator, QseqIterator, SequenceIterator)
-
-__all__ = ['BiologicalSequence', 'NucleotideSequence', 'DNA', 'DNASequence',
-           'RNA', 'RNASequence', 'Protein', 'ProteinSequence',
-           'DistanceMatrix', 'local_pairwise_align_ssw',
-           'SequenceCollection', 'Alignment', 'TreeNode', 'nj', 'parse_fasta',
-           'parse_fastq', 'parse_qual', 'parse_qseq', 'FastaIterator',
-           'FastqIterator', 'QseqIterator', 'SequenceIterator']
-
-from numpy.testing import Tester
-test = Tester().test
+test = TestRunner(__file__).test
 
 if __name__ == '__main__':
-    print(title)
-    print(art)
+    test()

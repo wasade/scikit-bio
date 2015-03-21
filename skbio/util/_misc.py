@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -8,10 +6,56 @@ from __future__ import absolute_import, division, print_function
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
+from __future__ import absolute_import, division, print_function
+
 import hashlib
 from os import remove, makedirs
 from os.path import exists, isdir
 from functools import partial
+from warnings import warn
+
+
+def cardinal_to_ordinal(n):
+    """Return ordinal string version of cardinal int `n`.
+
+    Parameters
+    ----------
+    n : int
+        Cardinal to convert to ordinal. Must be >= 0.
+
+    Returns
+    -------
+    str
+        Ordinal version of cardinal `n`.
+
+    Raises
+    ------
+    ValueError
+        If `n` is less than 0.
+
+    Notes
+    -----
+    This function can be useful when writing human-readable error messages.
+
+    Examples
+    --------
+    >>> from skbio.util import cardinal_to_ordinal
+    >>> cardinal_to_ordinal(0)
+    '0th'
+    >>> cardinal_to_ordinal(1)
+    '1st'
+    >>> cardinal_to_ordinal(2)
+    '2nd'
+    >>> cardinal_to_ordinal(3)
+    '3rd'
+
+    """
+    # Taken and modified from http://stackoverflow.com/a/20007730/3776794
+    # Originally from http://codegolf.stackexchange.com/a/4712 by Gareth
+    if n < 0:
+        raise ValueError("Cannot convert negative integer %d to ordinal "
+                         "string." % n)
+    return "%d%s" % (n, "tsnrhtdd"[(n//10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
 
 
 def is_casava_v180_or_later(header_line):
@@ -195,8 +239,43 @@ def create_dir(dir_name, fail_on_exist=False, handle_errors_externally=False):
     return error_code_lookup['NO_ERROR']
 
 
+def find_duplicates(iterable):
+    """Find duplicate elements in an iterable.
+
+    Parameters
+    ----------
+    iterable : iterable
+        Iterable to be searched for duplicates (i.e., elements that are
+        repeated).
+
+    Returns
+    -------
+    set
+        Repeated elements in `iterable`.
+
+    """
+    # modified from qiita.qiita_db.util.find_repeated
+    # https://github.com/biocore/qiita
+    # see licenses/qiita.txt
+    seen, repeated = set(), set()
+    for e in iterable:
+        if e in seen:
+            repeated.add(e)
+        else:
+            seen.add(e)
+    return repeated
+
+
 def flatten(items):
     """Removes one level of nesting from items
+
+    .. note:: Deprecated in scikit-bio 0.2.3-dev
+       ``skbio.util.flatten`` will be removed in scikit-bio 0.3.1
+       it is being deprecated in favor of solutions present
+       in the standard python library.
+       Please refer to the following links for good alternatives:
+       http://stackoverflow.com/a/952952/3639023
+       http://stackoverflow.com/a/406199/3639023.
 
     Parameters
     ----------
@@ -217,6 +296,11 @@ def flatten(items):
     ['a', 'b', 'c', 'd', 1, 2, 3, 4, 5, 'x', 'y', 'foo']
 
     """
+    warn("skbio.util.flatten is deprecated. Please refer to the following "
+         "links for solutions from the standard python library: "
+         "http://stackoverflow.com/a/952952/3639023 "
+         "http://stackoverflow.com/a/406199/3639023", DeprecationWarning)
+
     result = []
     for i in items:
         try:

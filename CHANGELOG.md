@@ -1,30 +1,182 @@
 # scikit-bio changelog
 
-## Version 0.2.0-dev (changes since 0.2.0 release go here)
+## Version 0.2.3-dev (changes since 0.2.3 release go here)
 
 ### Features
 
-* Added QSEQ parsing function ``parse_qseq`` and iterator ``QseqIterator`` to ``skbio.parse.sequences``.
+### Bug fixes
+* Changed `BiologicalSequence.distance` to raise an error any time two sequences are passed of different lengths regardless of the `distance_fn` being passed. [(#514)](https://github.com/biocore/scikit-bio/issues/514)
+
+### Deprecated functionality
+* Deprecated `skbio.util.flatten`. This function will be removed in scikit-bio 0.3.1. Please use standard python library functionality
+described here [Making a flat list out of lists of lists](http://stackoverflow.com/a/952952/3639023), [Flattening a shallow list](http://stackoverflow.com/a/406199/3639023) ([#833](https://github.com/biocore/scikit-bio/issues/833))
+
+### Backward-incompatible changes
+* Removed the following deprecated functionality:
+    - `skbio.parse` subpackage, including `SequenceIterator`, `FastaIterator`, `FastqIterator`, `load`, `parse_fasta`, `parse_fastq`, `parse_qual`, `write_clustal`, `parse_clustal`, and `FastqParseError`; please use `skbio.io` instead.
+    - `skbio.format` subpackage, including `fasta_from_sequence`, `fasta_from_alignment`, and `format_fastq_record`; please use `skbio.io` instead.
+    - `skbio.alignment.SequenceCollection.int_map`; please use `SequenceCollection.update_ids` instead.
+    - `skbio.alignment.SequenceCollection` methods `to_fasta` and `toFasta`; please use `SequenceCollection.write` instead.
+    - `constructor` parameter in `skbio.alignment.Alignment.majority_consensus`; please convert returned biological sequence object manually as desired (e.g., `str(seq)`).
+    - `skbio.alignment.Alignment.to_phylip`; please use `Alignment.write` instead.
+    - `skbio.sequence.BiologicalSequence.to_fasta`; please use `BiologicalSequence.write` instead.
+    - `skbio.tree.TreeNode` methods `from_newick`, `from_file`, and `to_newick`; please use `TreeNode.read` and `TreeNode.write` instead.
+    - `skbio.stats.distance.DissimilarityMatrix` methods `from_file` and `to_file`; please use `DissimilarityMatrix.read` and `DissimilarityMatrix.write` instead.
+    - `skbio.stats.ordination.OrdinationResults` methods `from_file` and `to_file`; please use `OrdinationResults.read` and `OrdinationResults.write` instead.
+    - `skbio.stats.p_value_to_str`; there is no replacement.
+    - `skbio.stats.subsample`; please use `skbio.stats.subsample_counts` instead.
+    - `skbio.stats.distance.ANOSIM`; please use `skbio.stats.distance.anosim` instead.
+    - `skbio.stats.distance.PERMANOVA`; please use `skbio.stats.distance.permanova` instead.
+    - `skbio.stats.distance.CategoricalStatsResults`; there is no replacement, please use `skbio.stats.distance.anosim` or `skbio.stats.distance.permanova`, which will return a `pandas.Series` object.
+* `skbio.alignment.Alignment.majority_consensus` now returns `BiologicalSequence('')` if the alignment is empty. Previously, `''` was returned.
+
+### Miscellaneous
+* Changed testing procedures
+    - Developers should now use `make test`
+    - Users can use `python -m skbio.test`
+    - Added `skbio.util._testing.TestRunner` (available through `skbio.util.TestRunner`). Used to provide a `test` method for each module init file. This class represents a unified testing path which wraps all `skbio` testing functionality.
+    - Autodetect Python version and disable doctests for Python 3.
+* `numpy` is no longer required to be installed before installing scikit-bio!
+* Upgraded checklist.py to check source files non-conforming to [new header style](http://scikit-bio.org/docs/latest/development/new_module.html). ([#855](https://github.com/biocore/scikit-bio/issues/855))
+
+## Version 0.2.3 (2015-02-13)
+
+### Features
+* Added `skbio.stats.composition` for analyzing data made up of proportions
+* Modified ``skbio.stats.distance.pwmantel`` to accept a list of filepaths. This is useful as it allows for a smaller amount of memory consumption as it only loads two matrices at a time as opposed to requiring that all distance matrices are loaded into memory.
+* Added ``skbio.util.find_duplicates`` for finding duplicate elements in an iterable.
+
+### Bug fixes
+* Fixed floating point precision bugs in ``Alignment.position_frequencies``, ``Alignment.position_entropies``, ``Alignment.omit_gap_positions``, ``Alignment.omit_gap_sequences``, ``BiologicalSequence.k_word_frequencies``, and ``SequenceCollection.k_word_frequencies`` ([#801](https://github.com/biocore/scikit-bio/issues/801)).
+
+### Backward-incompatible changes
+* Removed ``feature_types`` attribute from ``BiologicalSequence`` and all subclasses ([#797](https://github.com/biocore/scikit-bio/pull/797)).
+* Removed ``find_features`` method from ``BiologicalSequence`` and ``ProteinSequence`` ([#797](https://github.com/biocore/scikit-bio/pull/797)).
+* ``BiologicalSequence.k_word_frequencies`` now returns a ``collections.defaultdict`` of type ``float`` instead of type ``int``. This only affects the "default" case, when a key isn't present in the dictionary. Previous behavior would return ``0`` as an ``int``, while the new behavior is to return ``0.0`` as a ``float``. This change also affects the ``defaultdict``s that are returned by ``SequenceCollection.k_word_frequencies``.
+
+### Miscellaneous
+* ``DissimilarityMatrix`` and ``DistanceMatrix`` now report duplicate IDs in the ``DissimilarityMatrixError`` message that can be raised during validation.
+
+## Version 0.2.2 (2014-12-04)
+
+### Features
+* Added ``plot`` method to ``skbio.stats.distance.DissimilarityMatrix`` for creating basic heatmaps of a dissimilarity/distance matrix (see [#684](https://github.com/biocore/scikit-bio/issues/684)). Also added  ``_repr_png_`` and ``_repr_svg_`` methods for automatic display in the IPython Notebook, with ``png`` and ``svg`` properties for direct access.
+* Added `__str__` method to `skbio.stats.ordination.OrdinationResults`.
+* Added ``skbio.stats.distance.anosim`` and ``skbio.stats.distance.permanova`` functions, which replace the ``skbio.stats.distance.ANOSIM`` and ``skbio.stats.distance.PERMANOVA`` classes. These new functions provide simpler procedural interfaces to running these statistical methods. They also provide more convenient access to results by returning a ``pandas.Series`` instead of a ``CategoricalStatsResults`` object. These functions have more extensive documentation than their previous versions. If significance tests are suppressed, p-values are returned as ``np.nan`` instead of ``None`` for consistency with other statistical methods in scikit-bio. [#754](https://github.com/biocore/scikit-bio/issues/754)
+* Added `skbio.stats.power` for performing empirical power analysis. The module uses existing datasets and iteratively draws samples to estimate the number of samples needed to see a significant difference for a given critical value.
+* Added `skbio.stats.isubsample` for subsampling from an unknown number of values. This method supports subsampling from multiple partitions and does not require that all items be stored in memory, requiring approximately `O(N*M)`` space where `N` is the number of partitions and `M` is the maximum subsample size.
+* Added ``skbio.stats.subsample_counts``, which replaces ``skbio.stats.subsample``. See deprecation section below for more details ([#770](https://github.com/biocore/scikit-bio/issues/770)).
+
+### Bug fixes
+* Fixed issue where SSW wouldn't compile on i686 architectures ([#409](https://github.com/biocore/scikit-bio/issues/409)).
+
+### Deprecated functionality
+* Deprecated ``skbio.stats.p_value_to_str``. This function will be removed in scikit-bio 0.3.0. Permutation-based p-values in scikit-bio are calculated as ``(num_extreme + 1) / (num_permutations + 1)``, so it is impossible to obtain a p-value of zero. This function historically existed for correcting the number of digits displayed when obtaining a p-value of zero. Since this is no longer possible, this functionality will be removed.
+* Deprecated ``skbio.stats.distance.ANOSIM`` and ``skbio.stats.distance.PERMANOVA`` in favor of ``skbio.stats.distance.anosim`` and ``skbio.stats.distance.permanova``, respectively.
+* Deprecated ``skbio.stats.distance.CategoricalStatsResults`` in favor of using ``pandas.Series`` to store statistical method results. ``anosim`` and ``permanova`` return ``pandas.Series`` instead of ``CategoricalStatsResults``.
+* Deprecated ``skbio.stats.subsample`` in favor of ``skbio.stats.subsample_counts``, which provides an identical interface; only the function name has changed. ``skbio.stats.subsample`` will be removed in scikit-bio 0.3.0.
+
+### Backward-incompatible changes
+* Deprecation warnings are now raised using ``DeprecationWarning`` instead of ``UserWarning`` ([#774](https://github.com/biocore/scikit-bio/issues/774)).
+
+### Miscellaneous
+* The ``pandas.DataFrame`` returned by ``skbio.stats.distance.pwmantel`` now stores p-values as floats and does not convert them to strings with a specific number of digits. p-values that were previously stored as "N/A" are now stored as ``np.nan`` for consistency with other statistical methods in scikit-bio. See note in "Deprecated functionality" above regarding ``p_value_to_str`` for details.
+* scikit-bio now supports versions of IPython < 2.0.0 ([#767](https://github.com/biocore/scikit-bio/issues/767)).
+
+## Version 0.2.1 (2014-10-27)
+
+This is an alpha release of scikit-bio. At this stage, major backwards-incompatible API changes can and will happen. Unified I/O with the scikit-bio I/O registry was the focus of this release.
+
+### Features
 * Added ``strict`` and ``lookup`` optional parameters to ``skbio.stats.distance.mantel`` for handling reordering and matching of IDs when provided ``DistanceMatrix`` instances as input (these parameters were previously only available in ``skbio.stats.distance.pwmantel``).
 * ``skbio.stats.distance.pwmantel`` now accepts an iterable of ``array_like`` objects. Previously, only ``DistanceMatrix`` instances were allowed.
-* Added ``read`` and ``write`` methods to ``DissimilarityMatrix`` and ``DistanceMatrix``. These methods can support multiple file formats, automatic file format detection when reading, etc. by taking advantage of scikit-bio's I/O registry system. See ``skbio.io`` and ``skbio.io.dm`` for more details. Deprecated ``from_file`` and ``to_file`` methods in favor of ``read`` and ``write``. These methods will be removed in scikit-bio 0.3.0.
-* Added ``read`` and ``write`` methods to ``OrdinationResults``. These methods can support multiple file formats, automatic file format detection when reading, etc. by taking advantage of scikit-bio's I/O registry system. See ``skbio.io`` and ``skbio.io.ordres`` for more details. Deprecated ``from_file`` and ``to_file`` methods in favor of ``read`` and ``write``. These methods will be removed in scikit-bio 0.3.0.
-* Added ``read`` and ``write`` methods to ``TreeNode``. These methods can support multiple file formats, automatic file format detection when reading, etc. by taking advantage of scikit-bio's I/O registry system. See ``skbio.io`` and ``skbio.io.newick`` for more details. Deprecated ``from_file``, ``from_newick``, and ``to_newick`` methods in favor of ``read`` and ``write``. These methods will be removed in scikit-bio 0.3.0.
+* Added ``plot`` method to ``skbio.stats.ordination.OrdinationResults`` for creating basic 3-D matplotlib scatterplots of ordination results, optionally colored by metadata in a ``pandas.DataFrame`` (see [#518](https://github.com/biocore/scikit-bio/issues/518)). Also added  ``_repr_png_`` and ``_repr_svg_`` methods for automatic display in the IPython Notebook, with ``png`` and ``svg`` properties for direct access.
 * Added ``skbio.stats.ordination.assert_ordination_results_equal`` for comparing ``OrdinationResults`` objects for equality in unit tests.
-* ``BiologicalSequence`` (and its subclasses) now optionally store quality scores. A biological sequence's quality scores are stored as a 1-D ``numpy.ndarray`` of integers that is the same length as the biological sequence. Quality scores can be provided upon object instantiation via the keyword argument ``quality``, and can be retrieved via the ``BiologicalSequence.quality`` property. ``BiologicalSequence.has_quality`` is also provided for determining whether a biological sequence has quality scores or not. See [#616](https://github.com/biocore/scikit-bio/issues/616) for more details.
+* ``BiologicalSequence`` (and its subclasses) now optionally store Phred quality scores. A biological sequence's quality scores are stored as a 1-D ``numpy.ndarray`` of nonnegative integers that is the same length as the biological sequence. Quality scores can be provided upon object instantiation via the keyword argument ``quality``, and can be retrieved via the ``BiologicalSequence.quality`` property. ``BiologicalSequence.has_quality`` is also provided for determining whether a biological sequence has quality scores or not. See [#616](https://github.com/biocore/scikit-bio/issues/616) for more details.
 * Added ``BiologicalSequence.sequence`` property for retrieving the underlying string representing the sequence characters. This was previously (and still is) accessible via ``BiologicalSequence.__str__``. It is provided via a property for convenience and explicitness.
 * Added ``BiologicalSequence.equals`` for full control over equality testing of biological sequences. By default, biological sequences must have the same type, underlying sequence of characters, identifier, description, and quality scores to compare equal. These properties can be ignored via the keyword argument ``ignore``. The behavior of ``BiologicalSequence.__eq__``/``__ne__`` remains unchanged (only type and underlying sequence of characters are compared).
-* Methods to read and write taxonomies are now available under ``skbio.tree.TreeNode.from_taxonomy`` and ``skbio.tree.TreeNode.to_taxonomy`` respectively.
-* Added ``plot`` method to ``skbio.stats.ordination.OrdinationResults`` for creating basic 3-D matplotlib scatterplots of ordination results, optionally colored by metadata in a ``pandas.DataFrame`` (see [#518](https://github.com/biocore/scikit-bio/issues/518)). Also added  ``_repr_png_`` and ``_repr_svg_`` methods for automatic display in the IPython Notebook, with ``png`` and ``svg`` properties for direct access.
-* Added ``SequenceCollection.update_ids``, which provides a flexible way of updating sequence IDs on a ``SequenceCollection`` or ``Alignment`` (note that a new object is returned, since instances of these classes are immutable). Deprecated ``SequenceCollection.int_map`` in favor of this new method; it will be removed in scikit-bio 0.3.0.
-* Deprecated ``constructor`` parameter in ``Alignment.majority_consensus`` in favor of having users call ``str`` on the returned ``BiologicalSequence``. This parameter will be removed in scikit-bio 0.3.0.
-* Added ``write`` method to ``Alignment``, currently supporting the [PHYLIP file format](http://evolution.genetics.washington.edu/phylip/doc/sequence.html). This method can support multiple file formats, etc. by taking advantage of scikit-bio's I/O registry system. See ``skbio.io`` and ``skbio.io.phylip`` for more details. Deprecated ``to_phylip`` methods in favor of ``write``. This method will be removed in scikit-bio 0.3.0.
-* ``BiologicalSequence.__getitem__`` now supports specifying a sequence of indices to take from the biological sequence.
 * Added ``BiologicalSequence.copy`` for creating a copy of a biological sequence, optionally with one or more attributes updated.
+* ``BiologicalSequence.__getitem__`` now supports specifying a sequence of indices to take from the biological sequence.
+* Methods to read and write taxonomies are now available under ``skbio.tree.TreeNode.from_taxonomy`` and ``skbio.tree.TreeNode.to_taxonomy`` respectively.
+* Added ``SequenceCollection.update_ids``, which provides a flexible way of updating sequence IDs on a ``SequenceCollection`` or ``Alignment`` (note that a new object is returned, since instances of these classes are immutable). Deprecated ``SequenceCollection.int_map`` in favor of this new method; it will be removed in scikit-bio 0.3.0.
+* Added ``skbio.util.cardinal_to_ordinal`` for converting a cardinal number to ordinal string (e.g., useful for error messages).
+* New I/O Registry: supports multiple file formats, automatic file format detection when reading, unified procedural ``skbio.io.read`` and ``skbio.io.write`` in addition to OOP interfaces (``read/write`` methods) on the below objects. See ``skbio.io`` for more details.
+    - Added "clustal" format support:
+        * Has sniffer
+        * Readers: ``Alignment``
+        * Writers: ``Alignment``
+    - Added "lsmat" format support:
+        * Has sniffer
+        * Readers: ``DissimilarityMatrix``, ``DistanceMatrix``
+        * Writers: ``DissimilarityMatrix``, ``DistanceMatrix``
+    - Added "ordination" format support:
+        * Has sniffer
+        * Readers: ``OrdinationResults``
+        * Writers: ``OrdinationResults``
+    - Added "newick" format support:
+        * Has sniffer
+        * Readers: ``TreeNode``
+        * Writers: ``TreeNode``
+    - Added "phylip" format support:
+        * No sniffer
+        * Readers: None
+        * Writers: ``Alignment``
+    - Added "qseq" format support:
+        * Has sniffer
+        * Readers: generator of ``BiologicalSequence`` or its subclasses, ``SequenceCollection``, ``BiologicalSequence``, ``NucleotideSequence``, ``DNASequence``, ``RNASequence``, ``ProteinSequence``
+        * Writers: None
+    - Added "fasta"/QUAL format support:
+        * Has sniffer
+        * Readers: generator of ``BiologicalSequence`` or its subclasses, ``SequenceCollection``, ``Alignment``, ``BiologicalSequence``, ``NucleotideSequence``, ``DNASequence``, ``RNASequence``, ``ProteinSequence``
+        * Writers: same as readers
+    - Added "fastq" format support:
+        * Has sniffer
+        * Readers: generator of ``BiologicalSequence`` or its subclasses, ``SequenceCollection``, ``Alignment``, ``BiologicalSequence``, ``NucleotideSequence``, ``DNASequence``, ``RNASequence``, ``ProteinSequence``
+        * Writers: same as readers
 
 ### Bug fixes
 
 * Removed ``constructor`` parameter from ``Alignment.k_word_frequencies``, ``BiologicalSequence.k_words``, ``BiologicalSequence.k_word_counts``, and ``BiologicalSequence.k_word_frequencies`` as it had no effect (it was never hooked up in the underlying code). ``BiologicalSequence.k_words`` now returns a generator of ``BiologicalSequence`` objects instead of strings.
+* Modified the ``Alignment`` constructor to verify that all sequences have the same length, if not, raise an ``AlignmentError`` exception.  Updated the method ``Alignment.subalignment`` to calculate the indices only once now that identical sequence length is guaranteed.
+
+### Deprecated functionality
+* Deprecated ``constructor`` parameter in ``Alignment.majority_consensus`` in favor of having users call ``str`` on the returned ``BiologicalSequence``. This parameter will be removed in scikit-bio 0.3.0.
+
+* Existing I/O functionality deprecated in favor of I/O registry, old functionality will be removed in scikit-bio 0.3.0. All functionality can be found at ``skbio.io.read``, ``skbio.io.write``, and the methods listed below:
+    * Deprecated the following "clustal" readers/writers:
+        - ``write_clustal`` -> ``Alignment.write``
+        - ``parse_clustal`` -> ``Alignment.read``
+
+    * Deprecated the following distance matrix format ("lsmat") readers/writers:
+        - ``DissimilarityMatrix.from_file`` -> ``DissimilarityMatrix.read``
+        - ``DissimilarityMatrix.to_file`` -> ``DissimilarityMatrix.write``
+        - ``DistanceMatrix.from_file`` -> ``DistanceMatrix.read``
+        - ``DistanceMatrix.to_file`` -> ``DistanceMatrix.write``
+
+    * Deprecated the following ordination format ("ordination") readers/writers:
+        - ``OrdinationResults.from_file`` -> ``OrdinationResults.read``
+        - ``OrdinationResults.to_file`` -> ``OrdinationResults.write``
+
+    * Deprecated the following "newick" readers/writers:
+        - ``TreeNode.from_file`` -> ``TreeNode.read``
+        - ``TreeNode.from_newick`` -> ``TreeNode.read``
+        - ``TreeNode.to_newick`` -> ``TreeNode.write``
+
+    * Deprecated the following "phylip" writers:
+        - ``Alignment.to_phylip`` -> ``Alignment.write``
+
+    * Deprecated the following "fasta"/QUAL readers/writers:
+        - ``SequenceCollection.from_fasta_records`` -> ``SequenceCollection.read``
+        - ``SequenceCollection.to_fasta`` -> ``SequenceCollection.write``
+        - ``fasta_from_sequences`` -> ``skbio.io.write(obj, into=<file>, format='fasta')``
+        - ``fasta_from_alignment`` -> ``Alignment.write``
+        - ``parse_fasta`` -> ``skbio.io.read(<fasta>, format='fasta')``
+        - ``parse_qual`` -> ``skbio.io.read(<fasta>, format='fasta', qual=<file>)``
+        - ``BiologicalSequence.to_fasta`` -> ``BiologicalSequence.write``
+
+    * Deprecated the following "fastq" readers/writers:
+        - ``parse_fastq`` -> ``skbio.io.read(<fastq>, format='fastq')``
+        - ``format_fastq_record`` -> ``skbio.io.write(<fastq>, format='fastq')``
 
 ### Backward-incompatible changes
 
@@ -36,7 +188,7 @@
 
 * Added git timestamp checking to checklist.py, ensuring that when changes are made to Cython (.pyx) files, their corresponding generated C files are also updated.
 * Fixed performance bug when instantiating ``BiologicalSequence`` objects. The previous runtime scaled linearly with sequence length; it is now constant time when the sequence is already a string. See [#623](https://github.com/biocore/scikit-bio/issues/623) for details.
-* IPython is now a required dependency.
+* IPython and six are now required dependencies.
 
 ## Version 0.2.0 (2014-08-07)
 

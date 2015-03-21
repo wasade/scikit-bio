@@ -9,23 +9,22 @@
 from __future__ import absolute_import, division, print_function
 from future.builtins import zip, range
 from future.utils import viewkeys, viewitems
+from six import StringIO
 
 from collections import Counter, defaultdict, OrderedDict
-from importlib import import_module
-from warnings import warn
 
 import numpy as np
 from scipy.stats import entropy
 
+from skbio._base import SkbioObject
+from skbio.sequence import BiologicalSequence
 from skbio.stats.distance import DistanceMatrix
 from skbio.io.util import open_file
-from ._exception import SequenceCollectionError, StockholmParseError
-
-# This will be the responsibility of the ABC in the future.
-import_module('skbio.io')
+from ._exception import (SequenceCollectionError, StockholmParseError,
+                         AlignmentError)
 
 
-class SequenceCollection(object):
+class SequenceCollection(SkbioObject):
     """Class for storing collections of biological sequences.
 
     Parameters
@@ -49,8 +48,6 @@ class SequenceCollection(object):
     skbio.sequence.DNASequence
     skbio.sequence.RNASequence
     Alignment
-    skbio.parse.sequences
-    skbio.parse.sequences.parse_fasta
 
     Examples
     --------
@@ -63,71 +60,7 @@ class SequenceCollection(object):
     <SequenceCollection: n=2; mean +/- std length=6.00 +/- 1.00>
 
     """
-
-    @classmethod
-    def from_fasta_records(cls, fasta_records, seq_constructor,
-                           validate=False):
-        r"""Initialize a `SequenceCollection` object
-
-        Parameters
-        ----------
-        fasta_records : iterator of tuples
-            The records to load into a new `SequenceCollection` object. These
-            should be tuples of ``(sequence_id, sequence)``.
-        seq_constructor : skbio.sequence.BiologicalSequence
-        validate : bool, optional
-            If True, runs the `is_valid` method after construction and raises
-            `SequenceCollectionError` if ``is_valid == False``.
-
-        Returns
-        -------
-        SequenceCollection (or a derived class)
-            The new `SequenceCollection` object.
-
-        Raises
-        ------
-        skbio.alignment.SequenceCollectionError
-            If ``validate == True`` and ``is_valid == False``.
-
-        See Also
-        --------
-        skbio.sequence.BiologicalSequence
-        skbio.sequence.NucleotideSequence
-        skbio.sequence.DNASequence
-        skbio.sequence.RNASequence
-        Alignment
-        skbio.parse.sequences
-        skbio.parse.sequences.parse_fasta
-
-        Examples
-        --------
-        >>> from skbio.alignment import SequenceCollection
-        >>> from skbio.parse.sequences import parse_fasta
-        >>> from StringIO import StringIO
-        >>> from skbio.sequence import DNA
-        >>> fasta_f = StringIO('>seq1\nACCGT\n>seq2\nAACCGGT\n')
-        >>> s1 = SequenceCollection.from_fasta_records(
-        ...     parse_fasta(fasta_f), DNA)
-        >>> s1
-        <SequenceCollection: n=2; mean +/- std length=6.00 +/- 1.00>
-
-        >>> records = [('seq1', 'ACCGT'), ('seq2', 'AACCGGT')]
-        >>> s1 = SequenceCollection.from_fasta_records(records, DNA)
-        >>> s1
-        <SequenceCollection: n=2; mean +/- std length=6.00 +/- 1.00>
-
-        """
-        data = []
-        for seq_id, seq in fasta_records:
-            try:
-                id, description = seq_id.split(None, 1)
-            except ValueError:
-                id = seq_id.strip()
-                description = None
-            data.append(seq_constructor(seq, id=id,
-                                        description=description))
-
-        return cls(data, validate=validate)
+    default_write_format = 'fasta'
 
     def __init__(self, seqs, validate=False):
         self._data = seqs
@@ -342,7 +275,11 @@ class SequenceCollection(object):
         .. shownumpydoc
 
         """
-        return self.to_fasta()
+        fh = StringIO()
+        self.write(fh, format='fasta')
+        fasta_str = fh.getvalue()
+        fh.close()
+        return fasta_str
 
     def distances(self, distance_fn):
         """Compute distances between all pairs of sequences
@@ -383,7 +320,7 @@ class SequenceCollection(object):
         >>> print(a1.distances(hamming))
         3x3 distance matrix
         IDs:
-        s1, s2, s3
+        's1', 's2', 's3'
         Data:
         [[ 0.     0.25   0.25 ]
          [ 0.25   0.     0.125]
@@ -610,7 +547,9 @@ class SequenceCollection(object):
                                           "or fn is provided.")
 
         if ids is not None:
-            fn = lambda _: ids
+            def fn(_):
+                return ids
+
         elif fn is None:
             def fn(_):
                 new_ids = []
@@ -633,55 +572,6 @@ class SequenceCollection(object):
             new_seqs.append(seq.copy(id=new_id))
 
         return self.__class__(new_seqs), new_to_old_ids
-
-    def int_map(self, prefix=""):
-        """Create an integer-based mapping of sequence ids
-
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``SequenceCollection.int_map`` will be removed in scikit-bio 0.3.0
-           in favor of ``SequenceCollection.update_ids``, which provides a
-           generalized way of updating IDs on a ``SequenceCollection``. The
-           default behavior of ``SequenceCollection.update_ids`` matches the
-           behavior in ``int_map``, except that a new ``SequenceCollection`` is
-           returned instead of a ``dict``.
-
-        Parameters
-        ----------
-        prefix : str
-            String prefix for new integer-based ids.
-
-        Returns
-        -------
-        dict
-            Mapping of new ids to sequences.
-        dict
-            Mapping of new ids to old ids.
-
-        Notes
-        -----
-        This is useful when writing sequences out for use with programs that
-        are picky about their sequence ids (e.g., raXML).
-
-        The integer-based ids will be strings, for consistency (e.g., if prefix
-        is passed) and begin at 1.
-
-        References
-        ----------
-        RAxML Version 8: A tool for Phylogenetic Analysis and Post-Analysis of
-        Large Phylogenies". In Bioinformatics, 2014
-
-        """
-        warn("SequenceCollection.int_map is deprecated and will be removed in "
-             "scikit-bio 0.3.0. Please update your code to use "
-             "SequenceCollection.update_ids instead.", UserWarning)
-
-        int_keys = []
-        int_map = []
-        for i, seq in enumerate(self):
-            k = ("%s%d" % (prefix, i+1))
-            int_map.append((k, seq))
-            int_keys.append((k, seq.id))
-        return dict(int_map), dict(int_keys)
 
     def is_empty(self):
         """Return True if the SequenceCollection is empty
@@ -779,7 +669,7 @@ class SequenceCollection(object):
         return len(self._data)
 
     def k_word_frequencies(self, k, overlapping=True):
-        """Return frequencies of length k words for sequences in Alignment
+        """Return k-word frequencies for sequences in ``SequenceCollection``.
 
         Parameters
         ----------
@@ -787,43 +677,39 @@ class SequenceCollection(object):
             The word length.
         overlapping : bool, optional
             Defines whether the k-words should be overlapping or not
-            overlapping. This is only relevant when k > 1.
+            overlapping. This is only relevant when `k` > 1.
 
         Returns
         -------
         list
             List of ``collections.defaultdict`` objects, one for each sequence
-            in the `Alignment`, representing the frequency of each k word in
-            each sequence of the `Alignment`.
+            in the ``SequenceCollection``, representing the frequency of each
+            k-word in each sequence of the ``SequenceCollection``.
 
         See Also
         --------
-        position_frequencies
+        Alignment.position_frequencies
 
         Examples
         --------
-        >>> from skbio.alignment import Alignment
-        >>> from skbio.sequence import DNA
+        >>> from skbio import SequenceCollection, DNA
         >>> sequences = [DNA('A', id="seq1"),
         ...              DNA('AT', id="seq2"),
         ...              DNA('TTTT', id="seq3")]
         >>> s1 = SequenceCollection(sequences)
         >>> for freqs in s1.k_word_frequencies(1):
         ...     print(freqs)
-        defaultdict(<type 'int'>, {'A': 1.0})
-        defaultdict(<type 'int'>, {'A': 0.5, 'T': 0.5})
-        defaultdict(<type 'int'>, {'T': 1.0})
+        defaultdict(<type 'float'>, {'A': 1.0})
+        defaultdict(<type 'float'>, {'A': 0.5, 'T': 0.5})
+        defaultdict(<type 'float'>, {'T': 1.0})
         >>> for freqs in s1.k_word_frequencies(2):
         ...     print(freqs)
-        defaultdict(<type 'int'>, {})
-        defaultdict(<type 'int'>, {'AT': 1.0})
-        defaultdict(<type 'int'>, {'TT': 1.0})
+        defaultdict(<type 'float'>, {})
+        defaultdict(<type 'float'>, {'AT': 1.0})
+        defaultdict(<type 'float'>, {'TT': 1.0})
 
         """
-        result = []
-        for s in self:
-            result.append(s.k_word_frequencies(k, overlapping))
-        return result
+        return [s.k_word_frequencies(k, overlapping) for s in self]
 
     def sequence_lengths(self):
         """Return lengths of the sequences in the `SequenceCollection`
@@ -839,42 +725,6 @@ class SequenceCollection(object):
 
         """
         return [len(seq) for seq in self]
-
-    def to_fasta(self):
-        """Return fasta-formatted string representing the `SequenceCollection`
-
-        Returns
-        -------
-        str
-            A fasta-formatted string representing the `SequenceCollection`.
-
-        See Also
-        --------
-        skbio.parse.sequences.parse_fasta
-        """
-        return ''.join([seq.to_fasta() for seq in self._data])
-
-    def toFasta(self):
-        """Return fasta-formatted string representing the `SequenceCollection`
-
-        .. note:: Deprecated in skbio 0.3.0
-                  `SequenceCollection.toFasta` will be removed in skbio 0.2.0,
-                  it is replaced by `SequenceCollection.to_fasta` as the latter
-                  adheres to PEP8 naming conventions. This is necessary to keep
-                  in place now as these objects are sometimes passed into
-                  code that expects a `cogent.alignment.Alignment` object
-                  (e.g., PyNAST), so we need to support the method with this
-                  name.
-
-        Returns
-        -------
-        str
-            A fasta-formatted string representing the `SequenceCollection`.
-
-        """
-        warn("SequenceCollection.toFasta() is deprecated. You should use "
-             "SequenceCollection.to_fasta().")
-        return self.to_fasta()
 
     def upper(self):
         """Converts all sequences to uppercase
@@ -931,6 +781,8 @@ class Alignment(SequenceCollection):
     ------
     skbio.alignment.SequenceCollectionError
         If ``validate == True`` and ``is_valid == False``.
+    skbio.alignment.AlignmentError
+        If not all the sequences have the same length.
 
     Notes
     -----
@@ -945,8 +797,6 @@ class Alignment(SequenceCollection):
     skbio.sequence.DNASequence
     skbio.sequence.RNASequence
     SequenceCollection
-    skbio.parse.sequences
-    skbio.parse.sequences.parse_fasta
 
     Examples
     --------
@@ -959,12 +809,13 @@ class Alignment(SequenceCollection):
     <Alignment: n=2; mean +/- std length=7.00 +/- 0.00>
 
     """
-    # TODO change once we support more formats (#629)
-    default_write_format = 'phylip'
 
     def __init__(self, seqs, validate=False, score=None,
                  start_end_positions=None):
         super(Alignment, self).__init__(seqs, validate)
+
+        if not self._validate_lengths():
+            raise AlignmentError("All sequences need to be of equal length.")
 
         if score is not None:
             self._score = float(score)
@@ -1009,7 +860,7 @@ class Alignment(SequenceCollection):
         >>> print(a1.distances())
         3x3 distance matrix
         IDs:
-        s1, s2, s3
+        's1', 's2', 's3'
         Data:
         [[ 0.          0.42857143  0.28571429]
          [ 0.42857143  0.          0.42857143]
@@ -1173,18 +1024,14 @@ class Alignment(SequenceCollection):
 
         # prep the result object
         result = []
+        # indices to keep
+        indices = [
+            i for i in range(self.sequence_length()) if keep_position(i)]
         # iterate over sequences
         for sequence_index, seq in enumerate(self):
             # determine if we're keeping the current sequence
             if keep_seq(sequence_index, seq.id):
-                # if so, iterate over the positions to determine which we're
-                # keeping, and then slice the current sequence with these
-                # indices
-                #
-                # TODO this could be pulled out of the loop if we were
-                # guaranteed that an Alignment wasn't jagged. see #670 for
-                # details and update code when that is resolved
-                indices = [i for i in range(len(seq)) if keep_position(i)]
+                # slice the current sequence with the indices
                 result.append(seq[indices])
             # if we're not keeping the current sequence, move on to the next
             else:
@@ -1192,47 +1039,6 @@ class Alignment(SequenceCollection):
         # pack the result up in the same type of object as the current object
         # and return it
         return self.__class__(result)
-
-    def is_valid(self):
-        """Return True if the Alignment is valid
-
-        Returns
-        -------
-        bool
-            ``True`` if `self` is valid, and ``False`` otherwise.
-
-        Notes
-        -----
-        Validity is defined as having no sequences containing characters
-        outside of their valid character sets, and all sequences being of equal
-        length.
-
-        See Also
-        --------
-        skbio.alignment.BiologicalSequence.is_valid
-
-        Examples
-        --------
-        >>> from skbio.alignment import Alignment
-        >>> from skbio.sequence import DNA, RNA
-        >>> sequences = [DNA('ACCGT--', id="seq1"),
-        ...              DNA('AACCGGT', id="seq2")]
-        >>> a1 = Alignment(sequences)
-        >>> a1.is_valid()
-        True
-        >>> sequences = [DNA('ACCGT', id="seq1"),
-        ...              DNA('AACCGGT', id="seq2")]
-        >>> a1 = Alignment(sequences)
-        >>> print(a1.is_valid())
-        False
-        >>> sequences = [RNA('ACCGT--', id="seq1"),
-        ...              RNA('AACCGGT', id="seq2")]
-        >>> a1 = Alignment(sequences)
-        >>> print(a1.is_valid())
-        False
-
-        """
-        return super(Alignment, self).is_valid() and self._validate_lengths()
 
     def iter_positions(self, constructor=None):
         """Generator of Alignment positions (i.e., columns)
@@ -1292,21 +1098,8 @@ class Alignment(SequenceCollection):
             position = [constructor(seq[i]) for seq in self]
             yield position
 
-    def majority_consensus(self, constructor=None):
-        """Return the majority consensus sequence for the `Alignment`
-
-        .. note:: `constructor` parameter deprecated in scikit-bio 0.2.0-dev
-           `constructor` parameter will be removed in scikit-bio 0.3.0 as its
-           most common use is to convert to ``str``, and this functionality is
-           already accessible by calling ``str`` on the returned
-           ``BiologicalSequence`` (e.g., ``str(seq)``).
-
-        Parameters
-        ----------
-        constructor : function, optional
-            Constructor function for creating the consensus sequence. By
-            default, this will be the same type as the first sequence in the
-            `Alignment`.
+    def majority_consensus(self):
+        """Return the majority consensus sequence for the alignment.
 
         Returns
         -------
@@ -1315,7 +1108,9 @@ class Alignment(SequenceCollection):
             position the most common character is chosen, and those characters
             are combined to create a new sequence. The sequence will not have
             its ID, description, or quality set; only the consensus sequence
-            will be set.
+            will be set. The type of biological sequence that is returned will
+            be the same type as the first sequence in the alignment, or
+            ``BiologicalSequence`` if the alignment is empty.
 
         Notes
         -----
@@ -1335,30 +1130,16 @@ class Alignment(SequenceCollection):
         <DNASequence: AT-C (length: 4)>
 
         """
-        # handle empty Alignment case
         if self.is_empty():
-            return ''
-
-        if constructor is None:
-            constructor = self[0].__class__
+            seq_constructor = BiologicalSequence
         else:
-            warn("constructor parameter in Alignment.majority_consensus is "
-                 "deprecated and will be removed in scikit-bio 0.3.0. Please "
-                 "update your code to construct the desired object from the "
-                 "BiologicalSequence (or subclass) that is returned by this "
-                 "method.", UserWarning)
+            seq_constructor = self[0].__class__
 
-        result = []
-        for c in self.position_counters():
-            # Counter.most_common returns an ordered list of the
-            # n most common (sequence, count) items in Counter. Here
-            # we set n=1, and take only the character, not the count.
-            result.append(c.most_common(1)[0][0])
-
-        # TODO when constructor parameter is removed, this join call can be
-        # removed
-        result = ''.join(result)
-        return constructor(result)
+        # Counter.most_common returns an ordered list of the n most common
+        # (sequence, count) items in Counter. Here we set n=1, and take only
+        # the character, not the count.
+        return seq_constructor(c.most_common(1)[0][0]
+                               for c in self.position_counters())
 
     def omit_gap_positions(self, maximum_gap_frequency):
         """Returns Alignment with positions filtered based on gap frequency
@@ -1374,7 +1155,8 @@ class Alignment(SequenceCollection):
         -------
         Alignment
             The subalignment containing only the positions with gaps in fewer
-            than `maximum_gap_frequency` fraction of the sequences.
+            than (or equal to) `maximum_gap_frequency` fraction of the
+            sequences.
 
         Examples
         --------
@@ -1423,7 +1205,8 @@ class Alignment(SequenceCollection):
         -------
         Alignment
             The subalignment containing only the sequences with gaps in fewer
-            than `maximum_gap_frequency` fraction of the positions.
+            than (or equal to) `maximum_gap_frequency` fraction of the
+            positions.
 
         Examples
         --------
@@ -1512,23 +1295,19 @@ class Alignment(SequenceCollection):
         ...              DNA('TT-C', id="seq3")]
         >>> a1 = Alignment(sequences)
         >>> position_freqs = a1.position_frequencies()
-        >>> print(round(position_freqs[0]['A'],3))
+        >>> round(position_freqs[0]['A'], 3)
         0.667
-        >>> print(round(position_freqs[1]['A'],3))
+        >>> round(position_freqs[1]['A'], 3)
         0.0
 
         """
+        seq_count = self.sequence_count()
         result = []
-        # handle the empty Alignment case
-        if self.is_empty():
-            return result
-
-        count = 1 / self.sequence_count()
-        for p in self.iter_positions(constructor=str):
-            current_freqs = defaultdict(float)
-            for c in p:
-                current_freqs[c] += count
-            result.append(current_freqs)
+        for pos_counter in self.position_counters():
+            freqs = defaultdict(float)
+            for char, count in viewitems(pos_counter):
+                freqs[char] = count / seq_count
+            result.append(freqs)
         return result
 
     def position_entropies(self, base=None,
@@ -1572,12 +1351,13 @@ class Alignment(SequenceCollection):
         --------
         >>> from skbio.alignment import Alignment
         >>> from skbio.sequence import DNA
-        >>> sequences = [DNA('AC--', id="seq1"),
-        ...              DNA('AT-C', id="seq2"),
-        ...              DNA('TT-C', id="seq3")]
+        >>> sequences = [DNA('AA--', id="seq1"),
+        ...              DNA('AC-C', id="seq2"),
+        ...              DNA('AT-C', id="seq3"),
+        ...              DNA('TG-C', id="seq4")]
         >>> a1 = Alignment(sequences)
         >>> print(a1.position_entropies())
-        [0.63651416829481278, 0.63651416829481278, nan, nan]
+        [0.56233514461880829, 1.3862943611198906, nan, nan]
 
         """
         result = []
@@ -1624,63 +1404,6 @@ class Alignment(SequenceCollection):
             return 0
         else:
             return len(self._data[0])
-
-    def to_phylip(self, map_labels=False, label_prefix=""):
-        """Return phylip-formatted string representing the `SequenceCollection`
-
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``Alignment.to_phylip`` will be removed in scikit-bio 0.3.0. It is
-           replaced by ``Alignment.write``, which is a more general method for
-           serializing alignments. ``Alignment.write`` supports multiple file
-           formats by taking advantage of scikit-bio's I/O registry system. See
-           :mod:`skbio.io` for more details.
-
-        Returns
-        -------
-        str
-            A phylip-formatted string representing the `Alignment`.
-
-        See Also
-        --------
-        write
-
-        """
-        warn("Alignment.to_phylip is deprecated and will be removed in "
-             "scikit-bio 0.3.0. Please update your code to use "
-             "Alignment.write.", UserWarning)
-
-        if not self._validate_lengths():
-            raise SequenceCollectionError("PHYLIP-formatted string can only "
-                                          "be generated if all sequences are "
-                                          "of equal length.")
-
-        if self.is_empty():
-            raise SequenceCollectionError("PHYLIP-formatted string can only "
-                                          "be generated if there is at least "
-                                          "one sequence in the Alignment.")
-
-        sequence_length = self.sequence_length()
-        if sequence_length == 0:
-            raise SequenceCollectionError("PHYLIP-formatted string can only "
-                                          "be generated if there is at least "
-                                          "one position in the Alignment.")
-
-        ids = self.ids()
-        sequence_count = self.sequence_count()
-        result = ["%d %d" % (sequence_count, sequence_length)]
-        if map_labels:
-            _, new_id_to_old_id = self.update_ids(prefix=label_prefix)
-            old_id_to_new_id = {v: k for k, v in new_id_to_old_id.items()}
-        else:
-            new_id_to_old_id = {seq_id: seq_id for seq_id in ids}
-            old_id_to_new_id = new_id_to_old_id
-
-        for seq_id in ids:
-            new_id = old_id_to_new_id[seq_id]
-            seq = self[seq_id]
-            result.append("%s %s" % (new_id, str(seq)))
-
-        return '\n'.join(result), new_id_to_old_id
 
     def _validate_lengths(self):
         """Return ``True`` if all sequences same length, ``False`` otherwise

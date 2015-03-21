@@ -26,11 +26,16 @@ When considering submitting a new feature to scikit-bio, you should begin by pos
 When you post your issue, the scikit-bio developers will respond to let you know if we agree with the addition or change. It's very important that you go through this step to avoid wasting time working on a feature that we are not interested in including in scikit-bio.
 
 
-Getting started: "quick fixes"
-------------------------------
+Getting started:
+----------------
+
+### "quick fixes"
 
 Some of our issues are labeled as ``quick fix``. Working on [these issues](https://github.com/biocore/scikit-bio/issues?direction=desc&labels=quick+fix&milestone=&page=1&sort=updated&state=open) is a good way to get started with contributing to scikit-bio. These are usually small bugs or documentation errors that will only require one or a few lines of code to fix. Getting started by working on one of these issues will allow you to familiarize yourself with our development process before committing to a large amount of work (e.g., adding a new feature to scikit-bio). If you're interested in working on one of these issues, you should comment on the issue requesting that it be assigned to you.
 
+### Joining Development
+
+Once you are more comfortable with our development process, you can check out the [``on deck`` label](https://github.com/biocore/scikit-bio/labels/on%20deck) on our issue tracker. These issues represent what our current focus is in the project. As such, they are probably the best place to start if you are looking to join the conversation and contribute code.
 
 Code Review
 -----------
@@ -70,7 +75,7 @@ git pull upstream master
 git checkout -b my-topic-branch
 ```
 
-6. Run ``nosetests --with-doctest ; pep8 skbio setup.py`` to confirm that the tests pass before you make any changes.
+6. Run ``make test`` to confirm that the tests pass before you make any changes.
 
 7. Make your changes, add them (with ``git add``), and commit them (with ``git commit``). Don't forget to update associated scripts and tests as necessary. You should make incremental commits, rather than one massive commit at the end. Write descriptive commit messages to accompany each commit.
 
@@ -80,7 +85,7 @@ git checkout my-topic-branch
 git pull upstream master
 ```
 
-9. Run ``nosetests --with-doctest ; pep8 skbio setup.py`` to ensure that your changes did not cause anything expected to break.
+9. Run ``make test`` to ensure that your changes did not cause anything expected to break.
 
 10. Once the tests pass, you should push your changes to your forked repository on GitHub using:
 ```
@@ -110,21 +115,21 @@ All code that is added to scikit-bio must be unit tested, and the unit test code
 
 The scikit-bio coding guidelines describe our [expectations for unit tests](http://scikit-bio.org/development/coding_guidelines.html). You should review the unit test section before working on your test code.
 
-Tests can be executed using [nose](https://nose.readthedocs.org/en/latest/) by running `nosetests --with-doctest` from the base directory of the project or from within a Python or IPython session running the following code:
+Tests can be executed using [nose](https://nose.readthedocs.org/en/latest/) by running `make test` from the base directory of the project or from within a Python or IPython session running the following code:
 
 ``` python
 >>> import skbio
 >>> skbio.test()
 # full test suite is executed
->>> skbio.parse.test()
-# tests for the parse module are executed
+>>> skbio.io.test()
+# tests for the io module are executed
 ```
 
 Note that this is possible because the lines below are added at the end of each `__init__.py` file in the package, so if you add a new module, be sure to include these lines in its `__init__.py`:
 
 ```python
-from numpy.testing import Tester
-test = Tester().test
+from skbio.util import TestRunner
+test = TestRunner(__file__).test
 ```
 
 

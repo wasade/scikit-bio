@@ -269,11 +269,11 @@ Some pointers
 
 - *Test `all` the methods in your class.* You should assume that any method you haven't tested has bugs. The convention for naming tests is ``test_method_name``. Any leading and trailing underscores on the method name can be ignored for the purposes of the test; however, *all tests must start with the literal substring* ``test`` *for* ``unittest`` and ``nose`` *to find them.* If the method is particularly complex, or has several discretely different cases you need to check, use ``test_method_name_suffix``, e.g. ``test_init_empty``, ``test_init_single``, ``test_init_wrong_type``, etc. for testing ``__init__``.
 
-- *Docstrings for testing methods should be considered optional*, instead the description of what the method does should be included in the name itself, therefore the name should be descriptive enough such that when running ``nose -v`` you can immediately see the file and test method that's failing.
+- *Docstrings for testing methods should be considered optional*, instead the description of what the method does should be included in the name itself, therefore the name should be descriptive enough such that when running the tests in verbose mode you can immediately see the file and test method that's failing.
 
 .. code-block:: none
 
-    $ nosetests -v
+    $ python -c "import skbio; skbio.test(verbose=True)"
     skbio.maths.diversity.alpha.tests.test_ace.test_ace ... ok
     test_berger_parker_d (skbio.maths.diversity.alpha.tests.test_base.BaseTests) ... ok
 
@@ -301,9 +301,6 @@ Example of a ``nose`` test module structure
 
 .. code-block:: python
 
-    #!/usr/bin/env python
-    from __future__ import division
-
     # ----------------------------------------------------------------------------
     # Copyright (c) 2013--, scikit-bio development team.
     #
@@ -311,6 +308,8 @@ Example of a ``nose`` test module structure
     #
     # The full license is in the file COPYING.txt, distributed with this software.
     # ----------------------------------------------------------------------------
+
+    from __future__ import absolute_import, division, print_function
 
     import numpy as np
     from nose.tools import assert_almost_equal, assert_raises

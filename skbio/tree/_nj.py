@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -8,8 +6,10 @@ from __future__ import absolute_import, division, print_function
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
-from future.utils.six import StringIO
+from six import StringIO
 
 from skbio.stats.distance import DistanceMatrix
 from skbio.tree import TreeNode
@@ -109,8 +109,8 @@ def nj(dm, disallow_negative_branch_length=True, result_constructor=None):
             "generate a neighbor joining tree.")
 
     if result_constructor is None:
-        result_constructor = \
-            lambda x: TreeNode.read(StringIO(x), format='newick')
+        def result_constructor(x):
+            return TreeNode.read(StringIO(x), format='newick')
 
     # initialize variables
     node_definition = None

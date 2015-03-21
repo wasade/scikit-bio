@@ -9,25 +9,23 @@
 from __future__ import absolute_import, division, print_function
 from future.builtins import zip
 
-import warnings
 from functools import partial
-from importlib import import_module
 
 import numpy as np
 import matplotlib as mpl
-mpl.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from IPython.core.pylabtools import print_figure
+from IPython.core.display import Image, SVG
+
+from skbio._base import SkbioObject
+from skbio.stats._misc import _pprint_strs
+
 # avoid flake8 unused import error
 Axes3D
-from IPython.core.pylabtools import print_figure
-from IPython.display import Image, SVG
-
-# This will be the responsibility of the ABC in the future.
-import_module('skbio.io')
 
 
-class OrdinationResults(object):
+class OrdinationResults(SkbioObject):
     """Store ordination results, providing serialization and plotting support.
 
     Stores various components of ordination results. Provides methods for
@@ -57,7 +55,7 @@ class OrdinationResults(object):
     svg
 
     """
-    default_write_format = 'ordres'
+    default_write_format = 'ordination'
 
     def __init__(self, eigvals, species=None, site=None, biplot=None,
                  site_constraints=None, proportion_explained=None,
@@ -71,77 +69,42 @@ class OrdinationResults(object):
         self.species_ids = species_ids
         self.site_ids = site_ids
 
-    @classmethod
-    def from_file(cls, ord_res_f):
-        """Load ordination results from text file.
+    def __str__(self):
+        """Return a string representation of the ordination results.
 
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``from_file`` will be removed in scikit-bio 0.3.0. It is replaced by
-           ``read``, which is a more general method for deserializing
-           ordination results. ``read`` supports multiple file formats,
-           automatic file format detection, etc. by taking advantage of
-           scikit-bio's I/O registry system. See :mod:`skbio.io` for more
-           details.
-
-        Creates an ``OrdinationResults`` instance from a ``ordres`` formatted
-        file. See :mod:`skbio.io.ordres` for the format specification.
-
-        Parameters
-        ----------
-        ord_res_f: filepath or filehandle
-            File to read from.
+        String representation lists ordination results attributes and indicates
+        whether or not they are present. If an attribute is present, its
+        dimensions are listed. A truncated list of species and site IDs are
+        included (if they are present).
 
         Returns
         -------
-        OrdinationResults
-            Instance of type `cls` containing the parsed contents of
-            `ord_res_f`.
+        str
+            String representation of the ordination results.
 
-        Raises
-        ------
-        OrdResFormatError
-            If the format of the file is not valid, or if the shapes of the
-            different sections of the file are not consistent.
-
-        See Also
-        --------
-        read
+        .. shownumpydoc
 
         """
-        warnings.warn(
-            "OrdinationResults.from_file is deprecated and will be removed in "
-            "scikit-bio 0.3.0. Please update your code to use "
-            "OrdinationResults.read.", UserWarning)
-        return cls.read(ord_res_f, format='ordres')
+        lines = ['Ordination results:']
 
-    def to_file(self, out_f):
-        """Save ordination results to file in text format.
+        attrs = [(self.eigvals, 'Eigvals'),
+                 (self.proportion_explained, 'Proportion explained'),
+                 (self.species, 'Species'),
+                 (self.site, 'Site'),
+                 (self.biplot, 'Biplot'),
+                 (self.site_constraints, 'Site constraints')]
+        for attr, attr_label in attrs:
+            def formatter(e):
+                return 'x'.join(['%d' % s for s in e.shape])
 
-        .. note:: Deprecated in scikit-bio 0.2.0-dev
-           ``to_file`` will be removed in scikit-bio 0.3.0. It is replaced by
-           ``write``, which is a more general method for serializing ordination
-           results. ``write`` supports multiple file formats by taking
-           advantage of scikit-bio's I/O registry system. See :mod:`skbio.io`
-           for more details.
+            lines.append(self._format_attribute(attr, attr_label, formatter))
 
-        Serializes ordination results as an ``ordres`` formatted file. See
-        :mod:`skbio.io.ordres` for the format specification.
+        lines.append(self._format_attribute(self.species_ids, 'Species IDs',
+                                            lambda e: _pprint_strs(e)))
+        lines.append(self._format_attribute(self.site_ids, 'Site IDs',
+                                            lambda e: _pprint_strs(e)))
 
-        Parameters
-        ----------
-        out_f : filepath or filehandle
-            File to write to.
-
-        See Also
-        --------
-        write
-
-        """
-        warnings.warn(
-            "OrdinationResults.to_file is deprecated and will be removed in "
-            "scikit-bio 0.3.0. Please update your code to use "
-            "OrdinationResults.write.", UserWarning)
-        self.write(out_f, format='ordres')
+        return '\n'.join(lines)
 
     def plot(self, df=None, column=None, axes=(0, 1, 2), axis_labels=None,
              title='', cmap=None, s=20):
@@ -421,6 +384,13 @@ class OrdinationResults(object):
         # will pick it up and send it as output, resulting in a double display
         plt.close(fig)
         return data
+
+    def _format_attribute(self, attr, attr_label, formatter):
+        if attr is None:
+            formatted_attr = 'N/A'
+        else:
+            formatted_attr = formatter(attr)
+        return '\t%s: %s' % (attr_label, formatted_attr)
 
 
 class Ordination(object):

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -8,7 +6,9 @@ from __future__ import absolute_import, division, print_function
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from unittest import TestCase
+from __future__ import absolute_import, division, print_function
+
+from unittest import TestCase, main
 
 import numpy as np
 import numpy.testing as npt
@@ -29,6 +29,9 @@ class HelperBiomTable(object):
         self._data = data.T
         self.observation_ids = observation_ids
         self.sample_ids = sample_ids
+
+    def ids(self, axis):
+        return self.sample_ids
 
     def data(self, sample_id):
         i = self.sample_ids.index(sample_id)
@@ -125,14 +128,16 @@ class BaseTests(TestCase):
         # results are equal when passed as Table or matrix
         m_dm = pw_distances(self.t1, self.ids1, 'euclidean')
         t_dm = npt.assert_warns(
-            UserWarning, pw_distances_from_table, self.table1, 'euclidean')
+            DeprecationWarning, pw_distances_from_table, self.table1,
+            'euclidean')
         for id1 in self.ids1:
             for id2 in self.ids1:
                 npt.assert_almost_equal(m_dm[id1, id2], t_dm[id1, id2])
 
         m_dm = pw_distances(self.t2, self.ids2, 'euclidean')
         t_dm = npt.assert_warns(
-            UserWarning, pw_distances_from_table, self.table2, 'euclidean')
+            DeprecationWarning, pw_distances_from_table, self.table2,
+            'euclidean')
         for id1 in self.ids2:
             for id2 in self.ids2:
                 npt.assert_almost_equal(m_dm[id1, id2], t_dm[id1, id2])
@@ -141,14 +146,20 @@ class BaseTests(TestCase):
         # results are equal when passed as Table or matrix
         m_dm = pw_distances(self.t1, self.ids1, 'braycurtis')
         t_dm = npt.assert_warns(
-            UserWarning, pw_distances_from_table, self.table1, 'braycurtis')
+            DeprecationWarning, pw_distances_from_table, self.table1,
+            'braycurtis')
         for id1 in self.ids1:
             for id2 in self.ids1:
                 npt.assert_almost_equal(m_dm[id1, id2], t_dm[id1, id2])
 
         m_dm = pw_distances(self.t2, self.ids2, 'braycurtis')
         t_dm = npt.assert_warns(
-            UserWarning, pw_distances_from_table, self.table2, 'braycurtis')
+            DeprecationWarning, pw_distances_from_table, self.table2,
+            'braycurtis')
         for id1 in self.ids2:
             for id2 in self.ids2:
                 npt.assert_almost_equal(m_dm[id1, id2], t_dm[id1, id2])
+
+
+if __name__ == "__main__":
+    main()

@@ -17,6 +17,8 @@ Subpackages
    ordination
    spatial
    gradient
+   power
+   composition
 
 Functions
 ---------
@@ -24,8 +26,8 @@ Functions
 .. autosummary::
    :toctree: generated/
 
-   p_value_to_str
-   subsample
+   subsample_counts
+   isubsample
 
 """
 
@@ -37,10 +39,10 @@ Functions
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from ._misc import p_value_to_str
-from ._subsample import subsample
+from skbio.util import TestRunner
 
-__all__ = ['p_value_to_str', 'subsample']
+from ._subsample import subsample_counts, isubsample
 
-from numpy.testing import Tester
-test = Tester().test
+__all__ = ['subsample_counts', 'isubsample']
+
+test = TestRunner(__file__).test

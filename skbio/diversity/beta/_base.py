@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -7,6 +5,8 @@ from __future__ import absolute_import, division, print_function
 #
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
+
+from __future__ import absolute_import, division, print_function
 
 from warnings import warn
 
@@ -86,10 +86,10 @@ def pw_distances_from_table(table, metric="braycurtis"):
 
     """
     warn("pw_distances_from_table is deprecated. In the future (tentatively "
-         "scikit-bio 0.2.0), pw_distance will take a biom.table.Table object "
+         "scikit-bio 0.3.0), pw_distance will take a biom.table.Table object "
          "and this function will be removed. You will need to update your "
-         "code to call pw_distances at that time.")
-    sample_ids = table.sample_ids
+         "code to call pw_distances at that time.", DeprecationWarning)
+    sample_ids = table.ids(axis="sample")
     num_samples = len(sample_ids)
 
     # initialize the result object

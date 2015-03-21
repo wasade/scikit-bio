@@ -12,7 +12,7 @@ from itertools import product
 
 import numpy as np
 from future.builtins import range, zip
-from future.utils.six import string_types
+from six import string_types
 
 from skbio.alignment import Alignment
 from skbio.sequence import BiologicalSequence
@@ -594,7 +594,8 @@ def make_identity_substitution_matrix(match_score, mismatch_score,
     warn("make_identity_substitution_matrix is deprecated and will soon be "
          "replaced, though at the time of this writing the new name has not "
          "been finalized. Updates will be posted to issue #161: "
-         "https://github.com/biocore/scikit-bio/issues/161")
+         "https://github.com/biocore/scikit-bio/issues/161",
+         DeprecationWarning)
 
     result = {}
     for c1 in alphabet:
@@ -765,7 +766,7 @@ def _compute_score_and_traceback_matrices(
     score_matrix, traceback_matrix = init_matrices_f(
         aln1, aln2, gap_open_penalty, gap_extend_penalty)
 
-    # Iterate over the characters in aln2 (which corresponds to the horizontal
+    # Iterate over the characters in aln2 (which corresponds to the vertical
     # sequence in the matrix)
     for aln2_pos, aln2_chars in enumerate(aln2.iter_positions(str), 1):
         # Iterate over the characters in aln1 (which corresponds to the

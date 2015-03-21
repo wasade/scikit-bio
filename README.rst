@@ -1,66 +1,35 @@
-::
 
-               _ _    _ _          _     _
-              (_) |  (_) |        | |   (_)
-      ___  ___ _| | ___| |_ ______| |__  _  ___
-     / __|/ __| | |/ / | __|______| '_ \| |/ _ \
-     \__ \ (__| |   <| | |_       | |_) | | (_) |
-     |___/\___|_|_|\_\_|\__|      |_.__/|_|\___/
+.. image:: http://scikit-bio.org/assets/logo.svg
+   :target: http://scikit-bio.org
+   :alt: scikit-bio logo
 
-
-           Opisthokonta
-                   \  Amoebozoa
-                    \ /
-                     *    Euryarchaeota
-                      \     |_ Crenarchaeota
-                       \   *
-                        \ /
-                         *
-                        /
-                       /
-                      /
-                     *
-                    / \
-                   /   \
-        Proteobacteria  \
-                       Cyanobacteria
-
-|Build Status| |Coverage Status|
+|Build Status| |Coverage Status| |Gitter Badge|
 
 scikit-bio is an open-source, BSD-licensed python package providing data structures, algorithms and educational resources for bioinformatics.
 
-scikit-bio is currently in alpha. We are very actively developing it, and **backwards-incompatible interface changes can and will arise**. Once the API has started to solidify, we will strive to maintain backwards compatibility. We will provide deprecation warnings, etc. wherever possible.
-
 To view scikit-bio's documentation, visit `scikit-bio.org
 <http://scikit-bio.org>`__.
+
+scikit-bio is currently in alpha. We are very actively developing it, and **backwards-incompatible interface changes can and will arise**. Once the API has started to solidify, we will strive to maintain backwards compatibility. We will provide deprecation warnings wherever possible in the scikit-bio code, documentation, and CHANGELOG.md.
+
+**Note:** Deprecation warnings will be issued using Python's ``DeprecationWarning`` class. Since Python 2.7, these types of warnings are **silenced by default**. When developing a tool that uses scikit-bio, we recommend enabling the display of deprecation warnings to be informed of upcoming API changes. For details on how to display deprecation warnings, see `Python's deprecation warning docs <https://docs.python.org/3/whatsnew/2.7.html#changes-to-the-handling-of-deprecation-warnings>`_.
 
 Installation of release version (recommended for most users)
 ------------------------------------------------------------
 
 To install the latest release version of scikit-bio you should run::
 
-    pip install numpy
     pip install scikit-bio
 
-If you'd like to install the dependencies manually (or some other way
-than using pip), you can find those here:
+Equivalently, you can use the ``conda`` package manager available in `Anaconda <http://continuum.io/downloads>`_ or `miniconda <http://conda.pydata.org/miniconda.html>`_ to install scikit-bio and all its dependencies, without having to compile them::
 
--  `Python <http://www.python.org/>`__ 2.7 or >= 3.3
--  `numpy <http://www.numpy.org/>`__ >= 1.7
--  `scipy <http://www.scipy.org/>`__ >= 0.13.0
--  `matplotlib <http://www.matplotlib.org/>`__ >= 1.1.0
--  `pandas <http://pandas.pydata.org/>`__
--  `future <https://pypi.python.org/pypi/future>`__
--  `natsort <https://pypi.python.org/pypi/natsort>`__
--  `IPython <http://ipython.org>`__ 
+     conda install scikit-bio
 
-If you have trouble getting these dependencies installed (scipy, in particular, can be tricky), you should try installing `Canopy Express <https://www.enthought.com/canopy-express/>`_, which includes all of these dependencies. You should then be able to easily install scikit-bio by running::
+Finally, most scikit-bio's dependencies (in particular, the ones that are trickier to build) are also available, albeit only for Python 2, in `Canopy Express <https://www.enthought.com/canopy-express/>`_.
 
-    pip install scikit-bio
+You can verify your installation by running the scikit-bio unit tests as follows::
 
-After installation with ``pip``, you can run the scikit-bio unittest suite as follows::
-
-    nosetests --with-doctest skbio
+    python -m skbio.test
 
 Installation of development version
 -----------------------------------
@@ -72,23 +41,26 @@ If you're interested in working with the latest development release of scikit-bi
     cd scikit-bio
     pip install .
 
-After this completes, you can run the scikit-bio unittest suite as follows. You must first ``cd`` out of the ``scikit-bio`` directory for the tests to pass (here we ``cd`` to the home directory).
-::
+After this completes, you can run the scikit-bio unit tests from with a Python or IPython session as follows::
 
-    cd
-    nosetests --with-doctest skbio
+    import skbio
+    skbio.test()
+
+To only run tests for a specific scikit-bio module, for example skbio.sequence, you can do::
+
+    skbio.sequence.test()
 
 For developers of scikit-bio, if you don't want to be forced to re-install after every change, you can modify the above ``pip install`` command to::
 
     pip install -e .
 
-This will build scikit-bio's cython extensions, and will create a link in the ``site-packages`` directory to the scikit-bio source directory. When you then make changes to code in the source directory, those will be used (e.g., by the unittests) without re-installing.
+This will build scikit-bio's Cython extensions, and will create a link in the ``site-packages`` directory to the scikit-bio source directory. When you then make changes to code in the source directory, those will be used (e.g., by the unit tests) without re-installing.
 
 Finally, if you don't want to use ``pip`` to install scikit-bio, and prefer to just put ``scikit-bio`` in your ``$PYTHONPATH``, at the minimum you should run::
 
     python setup.py build_ext --inplace
 
-This will build scikit-bio's cython extensions, but not create a link to the scikit-bio source directory in ``site-packages``. If this isn't done, using certain components of scikit-bio will be inefficient and will produce an ``EfficiencyWarning``.
+This will build scikit-bio's Cython extensions, but not create a link to the scikit-bio source directory in ``site-packages``. If this isn't done, using certain components of scikit-bio will be inefficient and will produce an ``EfficiencyWarning``.
 
 Getting help
 ------------
@@ -154,18 +126,19 @@ Jose Carlos Clemente (`@cleme <https://github.com/cleme>`__), Damien
 Coy, Levi McCracken, Andrew Butterfield, Will Van Treuren (`@wdwvt1
 <https://github.com/wdwvt1>`__), Justin Kuczynski (`@justin212k
 <https://github.com/justin212k>`__), Jose Antonio Navas Molina
-(`@josenavas <https://github.com/josenavas>`__) and Matthew Wakefield
-(`@genomematt <https://github.com/genomematt>`__).
+(`@josenavas <https://github.com/josenavas>`__), Matthew Wakefield
+(`@genomematt <https://github.com/genomematt>`__) and Jens Reeder
+(`@jensreeder <https://github.com/jensreeder>`__).
 
 Logo
 ----
 
 scikit-bio's logo was created by `Alina Prassas <http://cargocollective.com/alinaprassas>`_.
-scikit-bio's ASCII art tree was created by `@gregcaporaso
-<https://github.com/gregcaporaso>`_. Our text logo was created at `patorjk.com
-<http://patorjk.com/software/taag/>`__.
 
 .. |Build Status| image:: https://travis-ci.org/biocore/scikit-bio.svg?branch=master
    :target: https://travis-ci.org/biocore/scikit-bio
 .. |Coverage Status| image:: https://coveralls.io/repos/biocore/scikit-bio/badge.png
    :target: https://coveralls.io/r/biocore/scikit-bio
+.. |Gitter Badge| image:: https://badges.gitter.im/Join%20Chat.svg
+   :alt: Join the chat at https://gitter.im/biocore/scikit-bio
+   :target: https://gitter.im/biocore/scikit-bio?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge

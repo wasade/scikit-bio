@@ -28,9 +28,10 @@ Functions
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
+from skbio.util import TestRunner
+
 from ._distributions import boxplots, grouped_distributions
 
 __all__ = ['boxplots', 'grouped_distributions']
 
-from numpy.testing import Tester
-test = Tester().test
+test = TestRunner(__file__).test

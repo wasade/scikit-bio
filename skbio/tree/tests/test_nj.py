@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 # ----------------------------------------------------------------------------
 # Copyright (c) 2013--, scikit-bio development team.
 #
@@ -8,7 +6,9 @@ from __future__ import absolute_import, division, print_function
 # The full license is in the file COPYING.txt, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from future.utils.six import StringIO
+from __future__ import absolute_import, division, print_function
+
+from six import StringIO
 from unittest import TestCase, main
 
 from skbio import DistanceMatrix, TreeNode, nj
