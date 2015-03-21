@@ -62,18 +62,21 @@ def ssvd(A, k=10, p=10, qiter=0, compute_v=True,  **kwargs):
                                    # an orthonormal basis for the range of Y
 
     #often, no iteration required to small error in eqn. 1.5
-    for i in range(1, qiter):
+    for i in range(qiter):
         y = np.dot(A, b.T)
         Q, R = sp.linalg.qr(y)
         b = np.dot(Q.T, A)
 
-    if compute_v:
-        U_ssvd, eigvals, V_ssvd = scipy.sparse.linalg.svds(b, k)
-        V_ssvd = V_ssvd.real
-        return U_ssvd, eigvals, V_ssvd
-    else:
-        bbt = np.dot(b, b.T)           # compute eigenvalues of much smaller matrix bbt
+    if compute_v: # compute svd of much smaller matrix b
+        #U_ssvd, eigvals, V_ssvd = scipy.sparse.linalg.svds(b, k)
+        bbt = np.dot(b, b.T)
+        eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
+        V_ssvd = np.dot(b.T, np.dot(U_ssvd, np.diag(1 / np.sqrt(eigvals))))
+        U_ssvd = np.dot(Q, U_ssvd)
+        return np.sqrt(eigvals), U_ssvd, V_ssvd
+
+    else: # compute eigenvalues of much smaller matrix bbt
+        bbt = np.dot(b, b.T)
         eigvals, U_ssvd = scipy.sparse.linalg.eigsh(bbt, k)
         U_ssvd = np.dot(Q, U_ssvd)
-        U_ssvd = U_ssvd.real
-        return U_ssvd, np.sqrt(eigvals)
+        return np.sqrt(eigvals), U_ssvd
