@@ -9,10 +9,12 @@
 from __future__ import absolute_import, division, print_function
 from future.utils import with_metaclass
 
+import numpy as np
 from abc import ABCMeta, abstractproperty
 
 from skbio.util import classproperty
 from ._iupac_sequence import IUPACSequence, _motifs as parent_motifs
+from ._protein import Protein
 
 
 class NucleotideSequence(with_metaclass(ABCMeta, IUPACSequence)):
@@ -177,6 +179,28 @@ class NucleotideSequence(with_metaclass(ABCMeta, IUPACSequence)):
             # object at this point and we only care about comparing the
             # underlying sequence data
             return self.reverse_complement()._string == other._string
+
+    def _translate(self, code):
+        """Translate to Protein
+
+        Parameters
+        ----------
+        code : skbio.sequence.GeneticCode instance
+            The genetic code to translate into
+
+        Returns
+        -------
+        skbio.sequence.Protein
+
+        Raises
+        ------
+        """
+        indices = self._minimized_ord()
+        indices = indices[:indices.size - indices.size % 3]
+        indices = indices.reshape(3, indices.size / 3)
+
+        scaler = code._codon_scaler[:, np.newaxis]
+        print(code._teh_translator(indices * scaler))
 
 
 _motifs = parent_motifs.copy()

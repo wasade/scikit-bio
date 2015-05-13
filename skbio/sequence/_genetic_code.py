@@ -7,11 +7,13 @@
 # ----------------------------------------------------------------------------
 
 import re
-
 from collections import defaultdict
 
+import numpy as np
+
 from skbio._base import SkbioObject
-from skbio.sequence import Protein, InvalidCodonError, GeneticCodeInitError
+from skbio.sequence import (Protein, InvalidCodonError, GeneticCodeInitError,
+                            DNA)
 
 # py3k compatibility
 try:
@@ -135,6 +137,10 @@ class GeneticCode(SkbioObject):
         for aa, codons in self.synonyms.items():
             ac[aa] = [_simple_rc(element) for element in codons]
         self.anticodons = ac
+
+        self._translate_lookup = None
+        self._alpha_size = 4 # ouch.
+        self._codon_scaler = np.array([self._alpha_size ** 2, self._alpha_size, 1])
 
     def _analyze_quartet(self, codons, aa):
         """Analyzes a quartet of codons and amino acids: returns list of lists.
@@ -308,6 +314,16 @@ class GeneticCode(SkbioObject):
         translation = Protein(''.join(translation))
 
         return translation
+
+    def _teh_translator(self, indices):
+        if self._translate_lookup is None:
+            translate = np.zeros(self._alpha_size ** 3, dtype=np.uint8)
+            for codon, amino in self.codons.items():
+                idx = (DNA(codon, validate=False)._minimized_ord() * self._codon_scaler).sum()
+                translate[idx] = ord(amino)
+            self._translate_lookup = translate
+
+        return self._translate_lookup[indices]
 
     def get_stop_indices(self, nucleotide_sequence, start=0):
         """returns indexes for stop codons in the specified frame

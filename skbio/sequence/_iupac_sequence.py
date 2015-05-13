@@ -204,6 +204,28 @@ class IUPACSequence(with_metaclass(ABCMeta, Sequence)):
                         len(bad) > 1 else bad[0],
                         list(self.alphabet)))
 
+    __ord_lookup = None
+    @classproperty
+    def _ord_lookup(cls):
+        if cls.__ord_lookup is not None:
+            return cls.__ord_lookup
+
+        ord_lookup = np.zeros(256, dtype=np.uint8)
+        for idx, code in enumerate(sorted(cls.nondegenerate_chars)):
+            ord_lookup[ord(code)] = idx
+        cls.__ord_lookup = ord_lookup
+        return ord_lookup
+
+    def _minimized_ord(self):
+        """Transform to minimized ordinals
+
+        Returns
+        -------
+        np.ndarray of uint8
+            The array of ordinals
+        """
+        return self._ord_lookup[self._bytes]
+
     def gaps(self):
         """Find positions containing gaps in the biological sequence.
 
